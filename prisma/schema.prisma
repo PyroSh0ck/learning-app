@@ -1,0 +1,115 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id String @id @default(cuid())
+  email String @unique
+  username String @unique
+  dateCreated DateTime @default(now())
+  studyguides StudyGuide[]
+
+  @@index([email, username])
+}
+
+model StudyGuide {
+  id String @id @default(cuid())
+  subject String?
+  name String
+  dateCreated DateTime @default(now())
+  lastModified DateTime @updatedAt
+  completedBy DateTime?
+  completed Boolean @default(false)
+
+  // this references the current users "id" (in the User model), and saves it to the field "userID" in this model
+  user User @relation(fields: [userID], references: [id])
+  userID String
+  flashCardSets FlashCardSet[]
+
+  @@unique([userID, name])
+  @@index([completed, subject, name, userID])
+}
+
+model FlashCardSet {
+  id String @id @default(cuid())
+  name String
+  tag String?
+  dateCreated DateTime @default(now())
+  lastModified DateTime @updatedAt
+
+  studyGuide StudyGuide @relation(fields: [studyGuideID], references: [id])
+  studyGuideID String
+
+  flashCards FlashCard[]
+  videos Video[]
+  practiceQuestions PracticeQuestion[]
+
+  @@unique([studyGuideID, name])
+  @@index([name, tag, studyGuideID])
+}
+
+model FlashCard {
+  id String @id @default(cuid())
+  frontContent String
+  backContent String
+
+  flashCardSet FlashCardSet @relation(fields: [flashCardSetID], references: [id])
+  flashCardSetID String
+
+  learnedCount Int @default(0)
+  lastLearned DateTime?
+  image String?
+
+  @@index([flashCardSetID])
+}
+
+model Video {
+  id String @id @default(cuid())
+
+  flashCardSet FlashCardSet @relation(fields: [flashCardSetID], references: [id])
+  flashCardSetID String
+
+  dateCreated DateTime @default(now())
+  watched Boolean @default(false)
+
+  url String
+
+  @@index([flashCardSetID])
+}
+
+model PracticeQuestion {
+  id String @id @default(cuid())
+
+  flashCardSet FlashCardSet @relation(fields: [flashCardSetID], references: [id])
+  flashCardSetID String
+
+  question String
+  answer String[] // if written response, only input 1 string
+  options Json? // only for multipleChoice/multipleSelect, else just input a ""
+
+  timesAnsweredRight Int @default(0)
+  timesAnsweredWrong Int @default(0)
+  image String?
+
+  type QuestionType @default(writtenResponse)
+
+  @@index([flashCardSetID])
+}
+
+enum QuestionType {
+  writtenResponse
+  multipleChoice
+  multipleSelect
+}
