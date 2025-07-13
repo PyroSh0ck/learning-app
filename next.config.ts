@@ -8,9 +8,9 @@ const nextConfig: NextConfig = {
   // by typing export const experimental_ppr = true (or false)
   // it defaults to false
   // but it applies to all child routes
-  experimental: {
-    ppr: 'incremental',
-  },
+  // experimental: {
+  //   ppr: 'incremental',
+  // },
 };
 
 export default nextConfig;

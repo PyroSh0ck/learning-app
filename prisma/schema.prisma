@@ -6,7 +6,7 @@
 
 generator client {
   provider = "prisma-client-js"
-  output = "node_modules/@prisma/client"
+  output   = "node_modules/@prisma/client"
 }
 
 datasource db {
@@ -24,9 +24,9 @@ model User {
 }
 
 model StudyGuide {
-  id           String    @id @default(cuid())
-  tag      String?
-  name         String 
+  id   String  @id @default(cuid())
+  tag  String?
+  name String
 
   dateCreated  DateTime  @default(now())
   lastModified DateTime  @updatedAt
@@ -38,7 +38,6 @@ model StudyGuide {
   userID        String
   flashCardSets FlashCardSet[]
 
-
   @@unique([name, userID]) // name_userID
   @@index([completed]) // want to be able to quickly find the completed ones and sort them
   @@index([tag])
@@ -46,7 +45,7 @@ model StudyGuide {
 
 model FlashCardSet {
   id           String   @id @default(cuid())
-  name         String 
+  name         String
   tag          String?
   dateCreated  DateTime @default(now())
   lastModified DateTime @updatedAt

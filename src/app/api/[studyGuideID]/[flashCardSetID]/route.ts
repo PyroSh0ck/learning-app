@@ -6,7 +6,7 @@ import { NextResponse, NextRequest } from 'next/server'
 
 export async function POST(req: NextRequest, { params } : { params: { studyGuideID : string, flashCardSetID : string}}) {
 
-    // URL format: /api/studyguides/[studyGuideID]/flashcards/[flashCardSetID]
+    // URL format: /api/[studyGuideID]/[flashCardSetID]
 
     // if there's an issue its likely to do with searchParams or the lack of the use of the 'await' keyword somewhere
 
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest, { params } : { params: { studyGuide
         })
     }
 
-    let newArr : { frontContent: string, backContent: string, flashCardSetID: string }[] = []
+    const newArr : { frontContent: string, backContent: string, flashCardSetID: string }[] = []
 
     JSON.parse(flashCardArr).forEach((element : { frontData: string, backData: string }) => {
 
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest, { params } : { params: { studyGuide
         })
 
         return NextResponse.json(createdCards)  
-    } catch (err) {
+    } catch {
         return NextResponse.json({
             message: "Unknown error reached with POST request. The bulk creation of flashcards failed (although it wasn't due to a foreign key constraint or a unique constraint validation",
             status: 500,
