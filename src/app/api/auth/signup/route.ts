@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 const prisma = new PrismaClient();
 
 export async function POST(request: Request) {
-  const { username, password } = await request.json();
+  const { username, password, email } = await request.json();
 
   if (!username || !password) {
     return NextResponse.json(
@@ -14,23 +14,32 @@ export async function POST(request: Request) {
     );
   }
 
-  const existingUser = await prisma.user.findUnique({
-    where: { username },
+  const existingUser = await prisma.user.findFirst({
+    where: {
+      OR: [ 
+        {
+          username: username,
+          email: email,
+        },
+      ],
+    }
   });
 
   if (existingUser) {
     return NextResponse.json(
-      { error: "User already exists" },
+      { error: "User or email already exists" },
       { status: 409 }
     );
   }
 
   const hashedPassword = await bcrypt.hash(password, 12);
 
+  
   const newUser = await prisma.user.create({
     data: {
-      username,
+      username: username,
       password: hashedPassword,
+      email: email
     },
   });
 
