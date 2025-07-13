@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "FlashCard" ADD COLUMN     "dateCreated" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+-- AlterTable
+ALTER TABLE "FlashCardSet" ADD COLUMN     "completed" BOOLEAN NOT NULL DEFAULT false;
