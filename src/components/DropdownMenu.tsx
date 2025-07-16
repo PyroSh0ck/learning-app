@@ -34,6 +34,7 @@ export default function TagDropdown({
     setIsOpen(false);
   };
 
+
   const handleRemoveTag = (name: string) => {
     setTag(tag.filter((t) => t !== name));
   };

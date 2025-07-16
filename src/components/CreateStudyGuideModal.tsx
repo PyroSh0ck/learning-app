@@ -28,6 +28,7 @@ export default function CreateStudyGuideDialog({
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
 
+  
   useEffect(() => {
     const fetchTags = async () => {
       const res = await fetch("/api/tags");
@@ -93,7 +94,7 @@ export default function CreateStudyGuideDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="absolute top-2 right-2 rounded-lg p-4 bg-purple-400 hover:bg-purple-500">
+        <Button className="absolute top-2 right-5 rounded-lg p-4 bg-purple-400 hover:bg-purple-500">
           Create
         </Button>
       </DialogTrigger>

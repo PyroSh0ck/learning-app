@@ -5,18 +5,20 @@ import StudyGuideContainer from "./StudyGuideContainer";
 import CreateStudyGuideModal from "./CreateStudyGuideModal";
 import { useEffect, useState } from "react";
 import FilterDropdown from "./FilterDropdown";
-
+import { useSession } from "next-auth/react";
 export default function StudyGuidesWrapper() {
   const [filter, setFilter] = useState("dateCreatedDesc");
   const [studyGuides, setStudyGuides] = useState<StudyGuide[]>([]);
-  const [search, setSearch] = useState(""); 
+  const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
-
+  const session = useSession();
+    const click = async () => {
+      const res = await fetch(`/api/studyguides`);
+      const data = await res.json();
+  }
   useEffect(() => {
     const fetchStudyGuides = async () => {
-      const res = await fetch(
-        `/api/studyguides?order=${filter}&search=${encodeURIComponent(query)}`
-      );
+      const res = await fetch(`/api/studyguides?order=${filter}&search=${encodeURIComponent(query)}`, );
       const data = await res.json();
       if (Array.isArray(data)) {
         setStudyGuides(data);
@@ -29,7 +31,7 @@ export default function StudyGuidesWrapper() {
   }, [filter, query]);
 
   return (
-    <div className="w-screen h-screen flex flex-col items-center bg-gray-100 text-black">
+    <div className="w-screen h-screen flex flex-col items-center bg-gray-100 text-black relative mt-3">
       <div>
         <div className="rounded-xl border-1 m-1 bg-purple-400 border-black">
           <h1 className="rounded-lg p-6 text-4xl border-2 m-3 font-bold border-black">
