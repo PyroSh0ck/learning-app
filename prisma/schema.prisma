@@ -6,7 +6,6 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "node_modules/@prisma/client"
 }
 
 datasource db {
@@ -15,17 +14,67 @@ datasource db {
 }
 
 model User {
-  id          String       @id @default(cuid())
-  email       String       @unique // already indexed
-  username    String       @unique // already indexed
-  password    String // hashed password
+  id String @id @default(cuid())
+
+  // NextAuth stuff
+  name          String?
+  image         String?
+  email         String    @unique // already indexed
+  emailVerified DateTime?
+
+  accounts Account[]
+  sessions Session[]
+
+  // Our stuff
+  username    String?       // already indexed
+  password    String? // hashed password
   dateCreated DateTime     @default(now())
   studyguides StudyGuide[]
+  tags Tag[]
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
 }
 
 model StudyGuide {
   id   String  @id @default(cuid())
-  tag  String?
+  tags  Tag[]
   name String
 
   dateCreated  DateTime  @default(now())
@@ -40,7 +89,21 @@ model StudyGuide {
 
   @@unique([name, userID]) // name_userID
   @@index([completed]) // want to be able to quickly find the completed ones and sort them
-  @@index([tag])
+}
+
+model Tag {
+  id String @id @default(cuid())
+  name String 
+  
+  color String
+
+  studyGuide StudyGuide @relation(fields: [studyGuideID], references: [id])
+  studyGuideID        String
+  user          User           @relation(fields: [userID], references: [id])
+  userID        String
+  
+
+  @@unique([name, userID])
 }
 
 model FlashCardSet {
@@ -69,8 +132,6 @@ model FlashCard {
   backContent  String
 
   dateCreated DateTime @default(now())
-
-  cardIndex Int
 
   flashCardSet   FlashCardSet @relation(fields: [flashCardSetID], references: [id])
   flashCardSetID String
