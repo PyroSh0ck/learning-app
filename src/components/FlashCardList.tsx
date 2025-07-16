@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { FlashCard } from "@prisma/client"
+import { FlashCard } from '@prisma/client'
 
 import FlashCardComp from './FlashCardComp'
 

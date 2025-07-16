@@ -1,5 +1,6 @@
 'use client'
 import { FlashCard } from '@prisma/client'
+
 import React, { useState } from 'react'
 
 export default function FlashCardComp({ card } : { card : FlashCard} ) {
