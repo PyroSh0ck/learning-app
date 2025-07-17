@@ -1,40 +1,108 @@
 import { prisma } from '@/lib/db'
-import { StudyGuide } from '@prisma/client'
-import { NextResponse, NextRequest } from 'next/server'
+import { Tag } from '@prisma/client'
+import { NextResponse } from 'next/server'
+import { NextAuthRequest } from 'next-auth'
 import { auth } from "@/auth"
-export async function POST(req: NextRequest) {
+
+
+
+export const POST = auth(async function POST(req: NextAuthRequest) {
   const body = await req.json();
-  const { studyGuideName, tags } = body;
+  const { studyGuideName, tagsGiven } : { studyGuideName : string, tagsGiven : string[]} = body;
+  const session = req.auth
 
-  if (!studyGuideName || studyGuideName.trim() === "") {
+  if (session) {
+    const currentUserID = session.user?.id
+
+    if (currentUserID != undefined) {
+      if (studyGuideName.trim() != "" && studyGuideName && studyGuideName != undefined) {
+
+        const createdGuide = await prisma.studyGuide.create({
+          data: {
+            name: studyGuideName,
+            userID: currentUserID,
+          }
+        })
+        
+        const tagArr : Tag[] = []
+
+        if (!tagsGiven || tagsGiven == undefined) {
+          return NextResponse.json({
+            message: "Created studyguide without tags because the tagsGiven array was undefined.",
+            status: 400,
+          })
+        }
+
+        tagsGiven.forEach(async (tag : string | null | undefined) => {
+          if (tag && tag != undefined) {
+            if (tag.trim() != "") {
+              try {
+                const foundTag = await prisma.tag.upsert({
+                  where: {
+                    tagId: { 
+                      name: tag,
+                      userID: currentUserID,
+                    }
+                  },
+                  update: {},
+                  create: {
+                    name: tag,
+                    studyGuideID: createdGuide.id,
+                    userID: currentUserID,
+                  }
+                })
+                
+                tagArr.push(foundTag)
+              } catch {
+                return NextResponse.json({
+                  message: "Unknown error caught while creating tags. Probably a problem with prisma upsert.",
+                  status: 500,
+                })
+              }
+            }
+          }
+        });
+        try {
+          const updatedGuide = await prisma.studyGuide.update({
+            where: {
+              id: createdGuide.id,
+            },
+            data: {
+              tags: {
+                create : tagArr
+              }
+            }
+          })
+
+          return NextResponse.json(updatedGuide)
+        } catch {
+          return NextResponse.json({
+            message: "This is jacob's fault. The update prisma function's create parameter probably doesn't take an array as a value.",
+            status: 500,
+          })
+        }
+        
+      } else {
+        return NextResponse.json({
+          message: "Unable to create studyguide, invalid name.",
+          status: 400,
+        })
+      }
+      
+    } else {
+      return NextResponse.json({
+        message: "Unable to create studyguide, user ID is invalid.",
+        status: 400,
+      })
+    }
+
+  } else {
     return NextResponse.json({
-      message: "Studyguide was unable to be saved. No name was sent.",
-      status: 500,
-    });
+      message: "Unable to create studyguide, user session is invalid.",
+      status: 400,
+    })
   }
-
-  try {
-    const data = {
-      name: studyGuideName.trim(),
-      userID: "abc1",
-      ...(tags?.trim() ? { tag: tags.trim() } : {}),
-    };
-
-    await prisma.studyGuide.create({ data });
-
-    return NextResponse.json({
-      message: "Saved Studyguide!",
-      status: 200,
-    });
-  } catch (err) {
-    console.error("CREATE ERROR:", err);
-    return NextResponse.json({
-      message: "Unexpected error? Unknown issue with creating studyguide?",
-      status: 500,
-    });
-  }
-}
-  
+})
 
 
 export const GET = auth(async function GET(req) {
@@ -63,6 +131,9 @@ export const GET = auth(async function GET(req) {
           },
         }),
       },
+      include: {
+        tags: true,
+      }
     });
 
     return NextResponse.json(guides);

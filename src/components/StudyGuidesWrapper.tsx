@@ -1,25 +1,25 @@
 "use client";
 
-import { StudyGuide } from "@prisma/client";
 import StudyGuideContainer from "./StudyGuideContainer";
 import CreateStudyGuideModal from "./CreateStudyGuideModal";
 import { useEffect, useState } from "react";
 import FilterDropdown from "./FilterDropdown";
-import { useSession } from "next-auth/react";
+import { Tag } from "@prisma/client";
+
 export default function StudyGuidesWrapper() {
   const [filter, setFilter] = useState("dateCreatedDesc");
-  const [studyGuides, setStudyGuides] = useState<StudyGuide[]>([]);
+  const [studyGuides, setStudyGuides] = useState<{ completed: boolean, completedBy: Date | null, dateCreated: Date, id: string, lastModified: Date, userID: string, name: string, tags: Tag[] }[]>([]);
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
-  const session = useSession();
-    const click = async () => {
-      const res = await fetch(`/api/studyguides`);
-      const data = await res.json();
-  }
+  const [toggleUpdate, setToggleUpdate] = useState(false);
+
+
+
   useEffect(() => {
     const fetchStudyGuides = async () => {
       const res = await fetch(`/api/studyguides?order=${filter}&search=${encodeURIComponent(query)}`, );
-      const data = await res.json();
+      const data : { completed: boolean, completedBy: Date | null, dateCreated: Date, id: string, lastModified: Date, name: string, userID: string, tags: Tag[]} = await res.json();
+      console.log(data)
       if (Array.isArray(data)) {
         setStudyGuides(data);
       } else {
@@ -28,17 +28,17 @@ export default function StudyGuidesWrapper() {
       }
     };
     fetchStudyGuides();
-  }, [filter, query]);
+  }, [filter, query, toggleUpdate]);
 
   return (
     <div className="w-screen h-screen flex flex-col items-center bg-gray-100 text-black relative mt-3">
-      <div>
+      <div className='h-screen w-screen'>
         <div className="rounded-xl border-1 m-1 bg-purple-400 border-black">
           <h1 className="rounded-lg p-6 text-4xl border-2 m-3 font-bold border-black">
             Study Guides
           </h1>
         </div>
-        <CreateStudyGuideModal onCreated={() => setFilter((prev) => prev)} />
+        <CreateStudyGuideModal setToggleUpdate={setToggleUpdate} onCreated={() => setFilter((prev) => prev)} />
       </div>
 
       <span className="flex w-4/5 h-20 m-6 p-3 items-center">

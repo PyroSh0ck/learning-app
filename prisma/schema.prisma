@@ -78,7 +78,7 @@ model StudyGuide {
   name String
 
   dateCreated  DateTime  @default(now())
-  lastModified DateTime  @updatedAt
+  lastModified DateTime  @updatedAt @default(now())
   completedBy  DateTime?
   completed    Boolean   @default(false)
 
@@ -95,7 +95,7 @@ model Tag {
   id String @id @default(cuid())
   name String 
   
-  color String
+  color String @default("gray-700")
 
   studyGuide StudyGuide @relation(fields: [studyGuideID], references: [id])
   studyGuideID        String
@@ -103,7 +103,7 @@ model Tag {
   userID        String
   
 
-  @@unique([name, userID])
+  @@unique(name: "tagId", [name, userID])
 }
 
 model FlashCardSet {
