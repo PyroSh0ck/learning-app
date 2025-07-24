@@ -26,11 +26,11 @@ model User {
   sessions Session[]
 
   // Our stuff
-  username    String?       // already indexed
+  username    String? // already indexed
   password    String? // hashed password
   dateCreated DateTime     @default(now())
   studyguides StudyGuide[]
-  tags Tag[]
+  tags        Tag[]
 }
 
 model Account {
@@ -73,43 +73,44 @@ model VerificationToken {
 }
 
 model StudyGuide {
-  id   String  @id @default(cuid())
-  tags  Tag[]
-  name String
+  id          String  @id @default(cuid())
+  tags        Tag[]
+  name        String
+  description String?
+  image       String?
 
   dateCreated  DateTime  @default(now())
-  lastModified DateTime  @updatedAt @default(now())
+  lastModified DateTime  @default(now()) @updatedAt
   completedBy  DateTime?
   completed    Boolean   @default(false)
 
   // this references the current users "id" (in the User model), and saves it to the field "userID" in this model
-  user          User           @relation(fields: [userID], references: [id])
-  userID        String
-  flashCardSets FlashCardSet[]
+  user     User       @relation(fields: [userID], references: [id])
+  userID   String
+  StudySet StudySet[]
+  private  Boolean    @default(false)
 
   @@unique([name, userID]) // name_userID
   @@index([completed]) // want to be able to quickly find the completed ones and sort them
 }
 
 model Tag {
-  id String @id @default(cuid())
-  name String 
-  
+  id   String @id @default(cuid())
+  name String
+
   color String @default("gray-700")
 
-  studyGuide StudyGuide @relation(fields: [studyGuideID], references: [id])
-  studyGuideID        String
-  user          User           @relation(fields: [userID], references: [id])
-  userID        String
-  
+  studyGuide   StudyGuide @relation(fields: [studyGuideID], references: [id])
+  studyGuideID String
+  user         User       @relation(fields: [userID], references: [id])
+  userID       String
 
   @@unique(name: "tagId", [name, userID])
 }
 
-model FlashCardSet {
+model StudySet {
   id           String   @id @default(cuid())
   name         String
-  tag          String?
   dateCreated  DateTime @default(now())
   lastModified DateTime @updatedAt
 
@@ -118,12 +119,24 @@ model FlashCardSet {
   studyGuide   StudyGuide @relation(fields: [studyGuideID], references: [id])
   studyGuideID String
 
-  flashCards        FlashCard[]
-  videos            Video[]
-  practiceQuestions PracticeQuestion[]
+  flashCardSets        FlashCardSet[]
+  playlists            Playlist[]
+  practiceQuestionSets PracticeQuestionSet[]
 
   @@unique([name, studyGuideID]) // name_studyGuideID
-  @@index([tag])
+}
+
+model FlashCardSet {
+  id           String   @id @default(cuid())
+  name         String
+  dateCreated  DateTime @default(now())
+  lastModified DateTime @default(now()) @updatedAt
+
+  completed  Boolean  @default(false)
+  StudySet   StudySet @relation(fields: [studySetID], references: [id])
+  studySetID String
+
+  flashCards FlashCard[]
 }
 
 model FlashCard {
@@ -133,39 +146,68 @@ model FlashCard {
 
   dateCreated DateTime @default(now())
 
-  flashCardSet   FlashCardSet @relation(fields: [flashCardSetID], references: [id])
+  FlashCardSet   FlashCardSet @relation(fields: [flashCardSetID], references: [id])
   flashCardSetID String
 
   learnedCount Int       @default(0)
   lastLearned  DateTime?
   image        String?
 
-  @@index([flashCardSetID]) // not @unique because flashcardsetID should not be unique but should have an index
+  @@index([flashCardSetID]) // not @unique because studySetID should not be unique but should have an index
+}
+
+model Playlist {
+  id String @id @default(cuid())
+
+  studySet   StudySet @relation(fields: [studySetID], references: [id])
+  studySetID String
+
+  dateCreated DateTime @default(now())
+  completed   Boolean  @default(false)
+
+  videos Video[]
+
+  @@index([studySetID])
 }
 
 model Video {
-  id String @id @default(cuid())
+  id   String @id @default(cuid())
+  name String
 
-  flashCardSet   FlashCardSet @relation(fields: [flashCardSetID], references: [id])
-  flashCardSetID String
+  Playlist   Playlist @relation(fields: [playlistID], references: [id])
+  playlistID String
 
   dateCreated DateTime @default(now())
   watched     Boolean  @default(false)
 
   url String
 
-  @@index([flashCardSetID])
+  @@index([playlistID])
+}
+
+model PracticeQuestionSet {
+  id String @id @default(cuid())
+
+  studySet   StudySet @relation(fields: [studySetID], references: [id])
+  studySetID String
+
+  dateCreated DateTime @default(now())
+  completed   Boolean  @default(false)
+
+  practiceQuestions PracticeQuestion[]
+
+  @@index([studySetID])
 }
 
 model PracticeQuestion {
   id String @id @default(cuid())
 
-  flashCardSet   FlashCardSet @relation(fields: [flashCardSetID], references: [id])
-  flashCardSetID String
+  PracticeQuestionSet   PracticeQuestionSet @relation(fields: [practiceQuestionSetID], references: [id])
+  practiceQuestionSetID String
 
   question String
   answer   String[] // if written response, only input 1 string
-  options  Json? // only for multipleChoice/multipleSelect, else just input a ""
+  options  String[] // only for multipleChoice/multipleSelect, else just input a "" AXV here, changing to just string array because its gonna be easier to work with, if frq have empty array
 
   timesAnsweredRight Int     @default(0)
   timesAnsweredWrong Int     @default(0)
@@ -173,7 +215,7 @@ model PracticeQuestion {
 
   type QuestionType @default(writtenResponse)
 
-  @@index([flashCardSetID])
+  @@index([practiceQuestionSetID])
 }
 
 enum QuestionType {

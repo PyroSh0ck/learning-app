@@ -107,9 +107,10 @@ export const POST = auth(async function POST(req: NextAuthRequest) {
 
 export const GET = auth(async function GET(req) {
   if (req.auth) {
-    const { searchParams } = new URL(req.url)
+    const searchParams = req.nextUrl.searchParams
     const orderParam = searchParams.get("order") || "dateCreatedDesc";
-    const searchQuery = searchParams.get("search") || "";
+    const searchQuery = searchParams.get("search") || "";         
+    
     const match = orderParam.match(/^(name|lastModified|dateCreated)(Asc|Desc)$/);
     if (!match) {
       return NextResponse.json({ error: "Invalid order parameter" }, { status: 400 });
