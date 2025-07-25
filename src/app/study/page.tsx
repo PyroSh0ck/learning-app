@@ -2,7 +2,8 @@ import NavBar from "@/components/NavBar";
 import { auth } from "@/auth";
 import Link from "next/link";
 import { SessionProvider } from "next-auth/react";
-import StudyGuidesWrapper from "@/components/StudyGuidesWrapper";
+// import StudyGuidesWrapper from "@/components/StudyGuidesWrapper";
+import StudyClient from "@/components/StudyClient";
 
 export default async function page() {
     const session = await auth()
@@ -18,7 +19,7 @@ export default async function page() {
       return (
         <SessionProvider>
           <NavBar />
-          <StudyGuidesWrapper />
+          <StudyClient />
         </SessionProvider>
         
       )
