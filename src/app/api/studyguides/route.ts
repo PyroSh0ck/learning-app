@@ -1,112 +1,68 @@
 import { prisma } from '@/lib/db'
-import { Tag } from '@prisma/client'
 import { NextResponse } from 'next/server'
 import { NextAuthRequest } from 'next-auth'
 import { auth } from "@/auth"
+import { ConnectStruct } from '@/lib/customTypes'
+import { AuthenticateUser, CheckIfValid } from '@/lib/customFuncs'
 
 
 
 export const POST = auth(async function POST(req: NextAuthRequest) {
-  const body = await req.json();
-  const { studyGuideName, tagsGiven } : { studyGuideName : string, tagsGiven : string[]} = body;
+
   const session = req.auth
+  const valid = AuthenticateUser(session)
+  
+  if (typeof valid === 'string') {
 
-  if (session) {
-    const currentUserID = session.user?.id
+    const userID = valid 
 
-    if (currentUserID != undefined) {
-      if (studyGuideName.trim() != "" && studyGuideName && studyGuideName != undefined) {
+    const body = await req.json();
+    const { studyGuideName, studyGuideDesc, tagIDsGiven } : { studyGuideName : string, studyGuideDesc : string, tagIDsGiven : ConnectStruct[]} = body;
 
-        const createdGuide = await prisma.studyGuide.create({
+    const check = CheckIfValid(studyGuideName, tagIDsGiven)
+
+    if (check === true) {
+      try {
+        const createdGuide_t = await prisma.studyGuide.create({
           data: {
             name: studyGuideName,
-            userID: currentUserID,
-          }
-        })
-        
-        const tagArr : Tag[] = []
-
-        if (!tagsGiven || tagsGiven == undefined) {
-          return NextResponse.json({
-            message: "Created studyguide without tags because the tagsGiven array was undefined.",
-            status: 400,
-          })
-        }
-
-        tagsGiven.forEach(async (tag : string | null | undefined) => {
-          if (tag && tag != undefined) {
-            if (tag.trim() != "") {
-              try {
-                const foundTag = await prisma.tag.upsert({
-                  where: {
-                    tagId: { 
-                      name: tag,
-                      userID: currentUserID,
-                    }
-                  },
-                  update: {},
-                  create: {
-                    name: tag,
-                    studyGuideID: createdGuide.id,
-                    userID: currentUserID,
-                  }
-                })
-                
-                tagArr.push(foundTag)
-              } catch {
-                return NextResponse.json({
-                  message: "Unknown error caught while creating tags. Probably a problem with prisma upsert.",
-                  status: 500,
-                })
-              }
-            }
-          }
-        });
-        try {
-          const updatedGuide = await prisma.studyGuide.update({
-            where: {
-              id: createdGuide.id,
-            },
-            data: {
+            userID: userID,
+            description: studyGuideDesc,
+            ...(tagIDsGiven.length > 0 && {
               tags: {
-                create : tagArr
+                connect: tagIDsGiven
               }
-            }
-          })
+            }),
 
-          return NextResponse.json(updatedGuide)
-        } catch {
-          return NextResponse.json({
-            message: "This is jacob's fault. The update prisma function's create parameter probably doesn't take an array as a value.",
-            status: 500,
-          })
-        }
-        
-      } else {
-        return NextResponse.json({
-          message: "Unable to create studyguide, invalid name.",
-          status: 400,
+          },
+          include : {
+            tags: true
+          }
         })
-      }
-      
+        return NextResponse.json(createdGuide_t)
+      } catch (err) {
+        console.error(err)
+        return NextResponse.json(
+          { message: "Invalid tag ID(s) was/were given. Please check the array: ", err},
+          { status: 400 }
+        )
+      } 
     } else {
-      return NextResponse.json({
-        message: "Unable to create studyguide, user ID is invalid.",
-        status: 400,
-      })
+      return check
     }
-
   } else {
-    return NextResponse.json({
-      message: "Unable to create studyguide, user session is invalid.",
-      status: 400,
-    })
+    return valid
   }
 })
 
 
-export const GET = auth(async function GET(req) {
-  if (req.auth) {
+export const GET = auth(async function GET(req: NextAuthRequest) {
+  const session = req.auth
+
+  const valid = AuthenticateUser(session)
+  if (typeof valid === 'string') {
+    const userID = valid 
+    
     const searchParams = req.nextUrl.searchParams
     const orderParam = searchParams.get("order") || "dateCreatedDesc";
     const searchQuery = searchParams.get("search") || "";         
@@ -118,26 +74,31 @@ export const GET = auth(async function GET(req) {
 
     const field = match[1];
     const direction = match[2] === "Asc" ? "asc" : "desc";
-
-    const guides = await prisma.studyGuide.findMany({
-      orderBy: {
-        [field]: direction,
-      },
-      where: {
-        userID: req.auth.user!.id,
-        ...(searchQuery && {
+    try {
+      const guides = await prisma.studyGuide.findMany({
+        orderBy: [
+          { [field]: direction },
+        ],
+        where: {
+          userID: userID,
           name: {
             contains: searchQuery,
             mode: "insensitive",
           },
-        }),
-      },
-      include: {
-        tags: true,
-      }
-    });
-
-    return NextResponse.json(guides);
+        },
+        include: {
+          tags: true,
+        }
+      });
+      return NextResponse.json(guides);
+  } catch (err) {
+    return NextResponse.json(
+      { message: "Error has occurred with the findMany prisma query", err },
+      { status: 500 }
+    )
   }
-  return NextResponse.json({ message: "Not authenticated" }, { status: 401 })
+    
+  } else {
+    return valid
+  }
 })

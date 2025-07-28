@@ -23,13 +23,14 @@ export default function SearchBar( { setQuery, setFilter, options } : { setQuery
     }
 
     return (    
-        <div className="flex flex-row justify-center items-center">
+        <div className="relative flex flex-row justify-center items-center">
             <form onSubmit={submitHandler}>
                 <input 
                     placeholder="Search for study guides here:"
                     onChange={changeHandler}
                     value={value}
                     type="text"
+                    className="border-2 rounded-2xl px-5 py-2.5 w-145 transition-all duration-175 ease-in-out border-purple-700 focus:border-purple-700 focus:placeholder-purple-700 focus:outline-none focus:ring-0 placeholder-purple-400 hover:placeholder-purple-700 hover:bg-gray-100"
                 />
             </form>
             <Filter setFilter={setFilter} options={options} />

@@ -74,7 +74,7 @@ model VerificationToken {
 
 model StudyGuide {
   id          String  @id @default(cuid())
-  tags        Tag[]
+  tags        Tag[] @relation("StudyGuideTags")
   name        String
   description String?
   image       String?
@@ -100,8 +100,7 @@ model Tag {
 
   color String @default("gray-700")
 
-  studyGuide   StudyGuide @relation(fields: [studyGuideID], references: [id])
-  studyGuideID String
+  studyGuides   StudyGuide[] @relation("StudyGuideTags")
   user         User       @relation(fields: [userID], references: [id])
   userID       String
 

@@ -16,3 +16,7 @@ export type DDConfig = {
     headerClick: (() => void) | null;
     footerClick: (() => void) | null;
 }
+
+export type ConnectStruct = {
+    id: string
+}

@@ -7,9 +7,9 @@ import { Tag } from "@prisma/client";
 
 
 
-function Container({ children, config } : { children : ReactNode, config : DDConfig }) {
+function Container({ children, config, visible } : { children : ReactNode, config : DDConfig, visible : boolean }) {
     return (
-        <div className={`relative top-full ${config.backgroundColor} ${config.fontWeight} ${config.height} ${config.width} ${config.textColor} ${config.fontSize}`}>
+        <div className={`absolute top-full mt-1.5 transition-all duration-175 ease-in-out flex-col ${ visible ? 'flex' : 'hidden'} ${config.backgroundColor} ${config.fontWeight} ${config.height} ${config.width} ${config.textColor} ${config.fontSize}`}>
             { children }
         </div>
     )
@@ -70,9 +70,9 @@ function Footer({ config } : { config: DDConfig }) {
     }
     
 }
-export default function Dropdown({ options, onClick, config } : { options : ListOption[], onClick : (value : unknown) => void, config: DDConfig })  {
+export default function Dropdown({ options, onClick, config, visible } : { options : ListOption[], onClick : (value : unknown) => void, config: DDConfig, visible : boolean })  {
     return (
-        <Container config={config} >
+        <Container config={config} visible={visible} >
             <Header config={config} />
             <Body options={options} onClick={onClick} config={config} />
             <Footer config={config} />

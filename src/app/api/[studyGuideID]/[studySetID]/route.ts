@@ -1,11 +1,11 @@
 import { prisma } from '@/lib/db'
-import { FlashCard } from '@prisma/client'
-import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library'
-import { DateTime } from 'next-auth/providers/kakao'
-import { NextResponse, NextRequest } from 'next/server'
+import { NextResponse } from 'next/server'
 import { NextAuthRequest } from 'next-auth'
 import { auth } from '@/auth'
-export const POST = auth(async function POST(req, { params }) {
+import { AuthenticateUser, CheckIfValid, CheckValidStudyGuide } from '@/lib/customFuncs'
+
+
+export const POST = auth(async function POST(req : NextAuthRequest, { params } : { params : Promise<{ studyGuideID : string, studySetID : string }> }) {
     // URL format: /api/[studyGuideID]/[studySetID]
 
     // if there's an issue its likely to do with searchParams or the lack of the use of the 'await' keyword somewhere
@@ -13,97 +13,86 @@ export const POST = auth(async function POST(req, { params }) {
     // assuming url is in this format /*?setID=0x840292&limit=50
     // req.nextUrl.searchParams = { 'setID' : '0x840292'}
 
-    if (req.auth!) {
+    const session = req.auth
 
-        const { studyGuideID, studySetID } = await params;
+    const valid = AuthenticateUser(session)
 
-        if (studyGuideID === "" || !studyGuideID) {
-            return NextResponse.json(
-                {message: `studyGuideID returned blank, null, or undefined. studyGuideID is ${studyGuideID}`}, 
-                { status: 400 }
-            ) 
-        }
-        if (studySetID === "" || !studySetID) {
-            return NextResponse.json(
-                { message: `studySetID returned blank, null, or undefined. studySetID is ${studySetID}`}, 
-                { status: 400 }
-            )
-        }
-
-
-        if (!req.auth.user?.id) {
-            return NextResponse.json(
-                {message: `Session is likely invalid, UserID was not found. UserID is ${req.auth.user?.id}`}, 
-                { status: 400 }
-            ) 
-        }
-        const currentUserID = req.auth.user.id;
-
-        const studyGuide = await prisma.studyGuide.findUnique({
-            where: {
-                id: studyGuideID
-            }
-        })
-        if (!studyGuide){
-            return NextResponse.json(
-                {message: `StudyGuide could not be found. StudyGuideID is ${studyGuideID}`}, 
-                { status: 500 }
-            ) 
-        }
-        const ownerUserID = studyGuide.userID
-        if (currentUserID != ownerUserID) {
-            return NextResponse.json(
-                {message: `You can not access a private studyguide's contents without being the owner.`}, 
-                { status: 400 }
-            ) 
-        }
-
-        const searchParams = req.nextUrl.searchParams
-        const method = searchParams.get("method")
-
-        const studySet = await prisma.studySet.findUnique({
-            where: {
-                id: studySetID
-            }
-        })
-
-        if (!studySet) {
-            return NextResponse.json(
-                {message: `Could not find flashcard set. Maybe it is a different study method?`}, 
-                { status: 500 }
-            )
-        }
+    if (typeof valid === 'string') {
         const body = await req.json()
-        if (method === "flashCardSet") {
-            const data = await prisma.flashCardSet.create({
-                data: {
-                    ...body,
-                    studySetID: studySetID
+
+        const { studyGuideID, studySetID } = await params
+
+        const check = CheckIfValid(studyGuideID, studySetID)
+
+        if (check === true) {
+            const userID = valid
+            const studyGuide = await prisma.studyGuide.findUnique({
+                where: {
+                    id: studyGuideID
                 }
             })
-            return NextResponse.json(data)
-        } else if (method === "playlist") {
-            const data = await prisma.playlist.create({
-                data: {
-                    ...body,
-                    studySetID: studySetID
+
+            const studyCheck = CheckValidStudyGuide(studyGuide, userID)
+
+            if (studyCheck === true) {
+                const searchParams = req.nextUrl.searchParams
+                const method = searchParams.get("method")
+
+                const studySet = await prisma.studySet.findUnique({
+                    where: {
+                        id: studySetID
+                    }
+                })
+
+                if (!studySet) {
+                    return NextResponse.json(
+                        {message: `Could not find flashcard set. Maybe it is a different study method?`}, 
+                        { status: 500 }
+                    )
+                }   
+                switch (method) {
+                    case "flashCardSet": {
+                        const data = await prisma[method].create({
+                            data: {
+                                ...body,
+                                studySetID: studySetID
+                            }
+                        })
+                        return NextResponse.json(data)
+                    }
+                    case "playlist": {
+                        const data = await prisma.playlist.create({
+                            data: {
+                                ...body,
+                                studySetID: studySetID
+                            }
+                        })
+                        return NextResponse.json(data)
+                    }
+                    case "practiceQuestionSet": {
+                        const data = await prisma.practiceQuestionSet.create({
+                            data: {
+                                ...body,
+                                studySetID: studySetID
+                            }
+                        })
+                        return NextResponse.json(data)
+                    }
+                    default:  
+                        return NextResponse.json(
+                            {message: `Method not recognized. Method is ${method}`}, 
+                            { status: 400 }
+                        )
                 }
-            })
-            return NextResponse.json(data)
-        } else if (method === "practiceQuestionSet") {
-            const data = await prisma.practiceQuestionSet.create({
-                data: {
-                    ...body,
-                    studySetID: studySetID
-                }
-            })
-            return NextResponse.json(data)
-        } else {   
-            return NextResponse.json(
-                {message: `Method not recognized. Method is ${method}`}, 
-                { status: 400 }
-            )
+            } else {
+                return studyCheck
+            }
+        } else {
+            return check
         }
+
+    } else {
+        return valid
     }
 })
    

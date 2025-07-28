@@ -1,7 +1,5 @@
-import NavBar from "@/components/NavBar";
 import { auth } from "@/auth";
 import Link from "next/link";
-import { SessionProvider } from "next-auth/react";
 // import StudyGuidesWrapper from "@/components/StudyGuidesWrapper";
 import StudyClient from "@/components/StudyClient";
 
@@ -17,11 +15,7 @@ export default async function page() {
       )
     } else {
       return (
-        <SessionProvider>
-          <NavBar />
           <StudyClient />
-        </SessionProvider>
-        
       )
     }
 }
