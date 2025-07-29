@@ -1,16 +1,22 @@
 "use client";
 import { StudyGuide } from "@prisma/client";
 import StudyGuideCreator from "./StudyGuideCreator";
-import { useState } from "react";
+import { Dispatch, SetStateAction } from "react";
 import Link from "next/link";
 
-export default function StudyGuideWrapper({ res }: { res: StudyGuide[] }) {
-  const [modalOpen, setModalOpen] = useState(false);
+export default function StudyGuideWrapper({ res, modalOpen, setModalOpen }: { res: StudyGuide[], modalOpen : boolean, setModalOpen : Dispatch<SetStateAction<boolean>>}) {
+ 
 
   return (
     <>
-      <div>
-        <StudyGuideCreator visible={modalOpen} res={res} />
+      <div
+        className={`flex flex-col items-center ${modalOpen ? "bg-black bg-opacity-50 h-screen w-full" : "h-screen w-full"}`}
+      >
+        <StudyGuideCreator
+          visible={modalOpen}
+          res={res}
+          setModalOpen={setModalOpen}
+        />
 
         <button
           className="bg-blue-500 text-white px-6 py-4 rounded hover:bg-blue-600 transition-colors duration-100  absolute top-3 right-5"
@@ -20,7 +26,7 @@ export default function StudyGuideWrapper({ res }: { res: StudyGuide[] }) {
         >
           Create Study Guide
         </button>
-        <div className="flex justify-center items-center flex-col w-screen h-60 overflow-y-scroll no-scrollbar ">
+        <div className={`flex justify-center items-center flex-col w-screen h-full overflow-y-scroll no-scrollbar ${modalOpen ? "hidden": ""}`}>
           {res.map((studyGuide: StudyGuide) => (
             <Link
               href={`/dashboard/${studyGuide.id}`}

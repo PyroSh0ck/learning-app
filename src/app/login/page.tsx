@@ -6,7 +6,7 @@ export default function page() {
   return (
     <div className="h-screen w-full flex flex-col justify-start items-center bg-white">
 
-        <SessionProvider><NavBar type={"login"} /></SessionProvider>
+        <SessionProvider><NavBar /></SessionProvider>
         <div className="bg-purple-800 w-2/5 h-4/5 border-purple-900 rounded-lg mt-20 flex flex-col justify-start items-center mb-20">
             <h1 className="text-3xl font-black lg:m-15 m-4 text-white">Log In</h1>
 

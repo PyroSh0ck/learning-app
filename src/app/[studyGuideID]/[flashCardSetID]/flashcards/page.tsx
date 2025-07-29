@@ -1,4 +1,4 @@
-import FlashCardList from '@/components/FlashCardList'
+// import FlashCardList from '@/components/FlashCardList'
 
 export default async function FlashCardPage({ params } : { params: Promise<{ studyGuideID: string, flashCardSetID: string }>} ) {
   const {studyGuideID, flashCardSetID} = await params
@@ -9,7 +9,7 @@ export default async function FlashCardPage({ params } : { params: Promise<{ stu
 
   return (
     <div>
-      <FlashCardList studyGuideID={studyGuideID} flashCardSetID={flashCardSetID} initialCards={flashcards} />
+      {/* <FlashCardList studyGuideID={studyGuideID} flashCardSetID={flashCardSetID} initialCards={flashcards} /> */}
     </div>
   )
 }

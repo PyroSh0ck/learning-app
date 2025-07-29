@@ -4,12 +4,12 @@ import Link from "next/link"
 import { signOut } from "next-auth/react"
 import { useSession } from "next-auth/react"
 
-export default function NavBar({ type } : { type: string }) {
+export default function NavBar() {
   const { data: session } = useSession()
 
-  if (type === "guest" || type === "login") {
+  if (!session?.user) {
     return (
-        <div className="bg-white border-8 border-purple-400 border-double rounded-lg flex flex-row place-content-between p-8 w-full">
+        <div className="bg-white border-8 border-purple-400 border-double h-1/5 rounded-lg flex flex-row place-content-between p-8 w-full">
           <div className="flex flex-row place-content-around">
             <Image alt="logo" src="/logo4.svg" width={80} height={80}/>
             <Link href="/" className="text-purple-400 text-3xl m-5 ml-10 font-black hover:text-purple-800 transition-colors duration-175 ease-in-out">Home</Link>
@@ -17,9 +17,9 @@ export default function NavBar({ type } : { type: string }) {
           <Link href='/login' className="text-purple-400 text-3xl m-5 font-black hover:text-purple-800 transition-colors duration-175 ease-in-out">Login</Link>
         </div>
       )
-  } else if (type === "homeSignedIn" || type === "study") {
+  } else {
     return (
-      <div className="bg-white border-8 border-purple-400 border-double rounded-lg flex flex-row place-content-between p-8">
+      <div className="bg-white border-8 border-purple-400 border-double h-1/5 rounded-lg flex flex-row items-center place-content-between p-8">
         <div className="flex flex-row">
           <Image alt="logo" src="/logo4.svg" width={80} height={80}/>
           <Link href="/" className="text-purple-400 text-3xl m-5 ml-10 font-black hover:text-purple-800 transition-colors duration-175 ease-in-out">Home</Link>

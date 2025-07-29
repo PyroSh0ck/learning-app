@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "StudyGuide" ALTER COLUMN "lastModified" SET DEFAULT CURRENT_TIMESTAMP;
