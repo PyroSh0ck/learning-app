@@ -4,6 +4,7 @@ import { NextAuthRequest } from 'next-auth'
 import { auth } from "@/auth"
 import { ConnectStruct } from '@/lib/customTypes'
 import { AuthenticateUser, CheckIfValid } from '@/lib/customFuncs'
+import { StudyGuide_f } from '@/lib/prismaTypes'
 
 
 
@@ -65,7 +66,37 @@ export const GET = auth(async function GET(req: NextAuthRequest) {
     
     const searchParams = req.nextUrl.searchParams
     const orderParam = searchParams.get("order") || "dateCreatedDesc";
-    const searchQuery = searchParams.get("search") || "";         
+    const searchQuery = searchParams.get("search") || "";
+
+    const searchID = searchParams.get("id")
+    
+    if (searchID !== null) {
+      try {
+        const guide : StudyGuide_f | null = await prisma.studyGuide.findUnique({
+          where: {
+            id: searchID
+          },
+          include: {
+            tags: true,
+            StudySet: true
+          }
+        })
+
+        if (guide === null) {
+          return NextResponse.json(
+            { message: "Error, could not find studyguide with given id" },
+            { status: 400 }
+          )
+        }
+
+        return NextResponse.json(guide)
+      } catch (err) {
+        return NextResponse.json( 
+          { message: "Unexpected error with findUnique has occurred: ", err },
+          { status: 500 }
+        )
+      }
+    }
     
     const match = orderParam.match(/^(name|lastModified|dateCreated)(Asc|Desc)$/);
     if (!match) {

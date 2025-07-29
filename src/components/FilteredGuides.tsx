@@ -1,6 +1,7 @@
 'use client'
 
 import { StudyGuide_t } from "@/lib/prismaTypes"
+import Link from "next/link"
 
 function Icon({ image } : { image: string | null}) {
     return (
@@ -42,11 +43,11 @@ function Progress() {
 function FilteredGuide({ guide } : { guide : StudyGuide_t }) {
     return (
         <div className='w-full flex flex-col justify-center items-center'>
-            <div className="flex shrink-0 flex-row place-content-evenly border-2 rounded-xl w-3/5 h-50 m-3 bg-purple-600 text-black shadow-lg transition hover:shadow-xl hover:scale-[1.01]" >
+            <Link href={`/study/${guide.id}`} className="flex shrink-0 flex-row place-content-evenly border-2 rounded-xl w-3/5 h-50 m-3 bg-purple-600 text-black shadow-lg transition hover:shadow-xl hover:scale-[1.01]" >
                 <Icon image={null} />
                 <Content guide={guide} />
                 <Progress />
-            </div>
+            </Link>
         </div>
     )
 }

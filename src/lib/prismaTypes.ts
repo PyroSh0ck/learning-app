@@ -11,6 +11,7 @@ export const studyGuideTagArgs = Prisma.validator<Prisma.StudyGuideDefaultArgs>(
 export const studyGuideFullArgs = Prisma.validator<Prisma.StudyGuideDefaultArgs>()({
   include: {
     tags: true,
+    StudySet: true,
   },
 });
 
