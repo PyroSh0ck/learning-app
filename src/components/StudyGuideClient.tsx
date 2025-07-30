@@ -3,9 +3,38 @@
 import { StudyGuide_f } from "@/lib/prismaTypes"
 import StatBox from "./StatBox"
 import { StudySet } from "@prisma/client"
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import Link from "next/link"
 
-export default function StudyGuideClient({ guide } : { guide : StudyGuide_f }) {
+function StatsComp({ headerName } : { headerName : string }) {
+    return (
+        <>
+            <h1 className="w-full text-left pl-10 text-2xl font-bold text-purple-600">{headerName}</h1>
+            <hr className='w-45 h-1 bg-purple-600 border-none self-start ml-7 rounded-lg mt-2' />
+            <div className='statsHolder flex flex-row flex-wrap justify-center items-center w-full h-full mt-10 '>
+                <StatBox text={'stat1'} />
+                <StatBox text={'stat2'} />
+                <StatBox text={'stat3'} />
+                <StatBox text={'stat4'} />
+                <StatBox text={'stat5'} />
+                <StatBox text={'stat6'} />
+            </div>
+        </>
+    )
+}
+
+export default function StudyGuideClient({ guideID } : { guideID : string }) {
+
+    const [guide, setGuide] = useState<StudyGuide_f>()
+
+    useEffect(() => {
+        const fetchFunc = async () => {
+            const res = await fetch(`/api/studyguides?id=${guideID}`)
+            setGuide(await res.json())
+        }
+
+        fetchFunc()
+    }, [guideID])
 
     const [currentSet, setCurrentSet] = useState<StudySet>()
 
@@ -13,32 +42,28 @@ export default function StudyGuideClient({ guide } : { guide : StudyGuide_f }) {
         setCurrentSet(studySet)
     }
 
+    if (guide === undefined) {
+        return <div>How did u get here</div>
+    }
     return (
         <div className='root flex flex-col justify-start items-center w-full h-4/5'>
-            <h1>{guide.name}</h1>
-            <div className='stats flex flex-col justify-start items-center'>
-                <h1 className="w-full text-left">General Stats</h1>
-                <div className='statsHolder flex flex-row place-content-evenly'>
-                    <StatBox text={'stat1'} />
-                    <StatBox text={'stat2'} />
-                    <StatBox text={'stat3'} />
-                    <StatBox text={'stat4'} />
-                    <StatBox text={'stat5'} />
-                    <StatBox text={'stat6'} />
-                </div>
-                <div className='studySetPlusStats flex flex-row'>
+            <h1 className='my-20 font-black text-5xl text-center'>{guide!.name}</h1>
+            <div className='stats h-auto flex flex-col justify-start items-center w-full'>
+                <StatsComp headerName="General Stats" />
+                <div className='studySetPlusStats flex flex-row w-full h-auto mt-30'>
                     <div className='studySet flex flex-col w-1/3 justify-start items-center'> 
-                        <h1 className='w-full text-center'>Study Sets</h1>   
-                        <hr className='w-full h-3' />
-                        <div className='studySetHolder flex flex-col border-r-2 border-purple-600 items-center justify-start overflow-y-scroll no-scrollbar'>
-                            {guide.StudySet.map(studySet => (
+                        <h1 className="w-full text-center pl-10 text-2xl font-bold text-purple-600">Study Sets</h1>   
+                        <hr className='w-full h-[0.2rem] bg-purple-600 border-none self-start ml-7 mt-2' />
+                        <div className='studySetHolder flex flex-col items-center justify-start overflow-y-scroll no-scrollbar min-h-185 border-r-3 border-purple-600 w-full'>
+                            {guide!.StudySet.map(studySet => (
                                 <div key={studySet.id} onClick={() => {setClickHandler(studySet)}}>{studySet.name}</div>
                             ))}
                         </div>
                     </div>
                     <div className='studySetStat flex flex-col w-2/3 justify-start items-center'>
-                        <h1> {currentSet?.name || 'Study Set'} Stats </h1>
-                        <div className='studySetStatHolder flex flex-row place-content-evenly'>
+                        <h1 className="w-full text-center pl-10 text-2xl font-bold text-purple-600"> {currentSet?.name || 'Study Set'} Stats </h1>
+                        <hr className='w-full h-1 bg-purple-600 border-none self-start ml-7 mt-2' />
+                        <div className='statsHolder flex flex-row flex-wrap justify-center items-center w-full h-full mt-10'>
                             <StatBox text={'stat1'} />
                             <StatBox text={'stat2'} />
                             <StatBox text={'stat3'} />
@@ -46,6 +71,7 @@ export default function StudyGuideClient({ guide } : { guide : StudyGuide_f }) {
                             <StatBox text={'stat5'} />
                             <StatBox text={'stat6'} />
                         </div>
+                        <Link href={`/study/${guideID}/${currentSet?.id}`} className="bg-purple-700 p-4 rounded-xl hover:bg-purple-800 text-white transition-colors duration-175 ease-in-out font-black cursor-pointer m-5" >Go to Studyset</Link>
                     </div>
                 </div>
             </div>
