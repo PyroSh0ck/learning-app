@@ -148,8 +148,9 @@ export const PATCH = auth(async function PATCH(req: NextAuthRequest) {
     if (id) {
       const body = await req.json()
 
-      const { name, description, tagIDs } : { name : string, description : string, tagIDs : ConnectStruct[] } = body
+      const { name, description, tagIDs } : { name : string, description : string | null, tagIDs : ConnectStruct[] } = body
 
+      console.error(description)
       const check = CheckIfValid(name, description, tagIDs)
 
       if (check === true) {
@@ -173,7 +174,7 @@ export const PATCH = auth(async function PATCH(req: NextAuthRequest) {
               }
             })
 
-            if (dupGuideName) {
+            if (dupGuideName && dupGuideName.id !== currentGuide.id) {
               return NextResponse.json(
                 { message: "Same Studyguide Name Error" },
                 { status: 400 }
@@ -187,7 +188,7 @@ export const PATCH = auth(async function PATCH(req: NextAuthRequest) {
                   name: name,
                   description: description,
                   tags : {
-                    connect: tagIDs
+                    set: tagIDs
                   }
                 },
                 include: {

@@ -30,6 +30,7 @@ export default function StudyGuideClient({ guideID } : { guideID : string }) {
 
     const [guide, setGuide] = useState<StudyGuide_f>()
     const [editOpen, setEditOpen] = useState(false)
+     const [currentSet, setCurrentSet] = useState<StudySet>()
 
     useEffect(() => {
         const fetchFunc = async () => {
@@ -40,8 +41,11 @@ export default function StudyGuideClient({ guideID } : { guideID : string }) {
         fetchFunc()
     }, [guideID])
 
-    const [currentSet, setCurrentSet] = useState<StudySet>()
+    useEffect(() => {
+        console.log(guide)
+    }, [guide])
 
+    if (!guide) return <div></div>
     const setClickHandler = ( studySet : StudySet ) => {
         setCurrentSet(studySet)
     }
@@ -63,7 +67,7 @@ export default function StudyGuideClient({ guideID } : { guideID : string }) {
                             <h1 className="w-full text-center pl-10 text-2xl font-bold text-purple-600">Study Sets</h1>   
                             <hr className='w-full h-[0.2rem] bg-purple-600 border-none self-start ml-7 mt-2' />
                             <div className='studySetHolder flex flex-col items-center justify-start overflow-y-scroll no-scrollbar min-h-185 border-r-3 border-purple-600 w-full'>
-                                {guide!.StudySet.map(studySet => (
+                                {(guide!.StudySet ?? []).map(studySet => (
                                     <div key={studySet.id} onClick={() => {setClickHandler(studySet)}}>{studySet.name}</div>
                                 ))}
                             </div>

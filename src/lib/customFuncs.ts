@@ -29,25 +29,22 @@ export const AuthenticateUser = (session : Session | null) => {
 
 export const CheckIfValid = (...vars : unknown[]) => {
     for (const element of vars) {
-        if (!element) {
+        if (element === null) {
             return NextResponse.json(
-                { message: `Unexpected error. ${element} returned null`},
+                { message: `Unexpected error. Element at index ${vars.indexOf(element)} of params returned null`},
                 { status: 400 }
             )
         }
 
         if (element === undefined) {
             return NextResponse.json(
-                { message: `Unexpected error. ${element} is undefined. Is this intentional? `},
+                { message: `Unexpected error. Element at index ${vars.indexOf(element)} of params is undefined. Is this intentional? `},
                 { status: 400 }
             )
         }
 
         if (typeof element === 'string' && element.trim() === '') {
-            return NextResponse.json(
-                { message: `Unexpected error. ${element} is an empty string. Is this intentional? `},
-                { status: 400 }
-            )
+            console.log(`Element at index ${vars.indexOf(element)} of params is an empty string. Was this intentional?`)
         }
 
         if (Array.isArray(element) && element.length === 0) {
