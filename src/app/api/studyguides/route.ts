@@ -133,3 +133,88 @@ export const GET = auth(async function GET(req: NextAuthRequest) {
     return valid
   }
 })
+
+export const PATCH = auth(async function PATCH(req: NextAuthRequest) {
+  const session = req.auth
+
+  const valid = AuthenticateUser(session)
+
+  if (typeof valid === 'string') {
+
+    const searchParams = req.nextUrl.searchParams
+
+    const id = searchParams.get('id')
+
+    if (id) {
+      const body = await req.json()
+
+      const { name, description, tagIDs } : { name : string, description : string, tagIDs : ConnectStruct[] } = body
+
+      const check = CheckIfValid(name, description, tagIDs)
+
+      if (check === true) {
+        const userID = valid
+
+        const currentGuide = await prisma.studyGuide.findFirst({
+          where : {
+            userID: valid,
+            id: id
+          }
+        })
+        
+        if (currentGuide) {
+          try {
+            const dupGuideName = await prisma.studyGuide.findUnique({
+              where: {
+                studyGuideID: {
+                  name: name,
+                  userID: userID
+                }
+              }
+            })
+
+            if (dupGuideName) {
+              return NextResponse.json(
+                { message: "Same Studyguide Name Error" },
+                { status: 400 }
+              )
+            } else {
+              const newGuide = await prisma.studyGuide.update({
+                where: {
+                  id: id
+                },
+                data : {
+                  name: name,
+                  description: description,
+                  tags : {
+                    connect: tagIDs
+                  }
+                },
+                include: {
+                  tags: true,
+                  StudySet: true
+                }
+              })
+
+              return NextResponse.json(newGuide)
+            }
+          } catch (err) {
+            return NextResponse.json(
+              { message: "An unexpected error has occurred with the findUnique prisma query for finding dup study guide names: ", err },
+              { status: 500 }
+            )
+          }
+        } else {
+          return NextResponse.json(
+            { message: "Error, user does not have permission to update this studyguide" },
+            { status: 400 }
+          )
+        }
+      } else {
+        return check
+      }
+    }
+  } else {
+    return valid
+  }
+})

@@ -15,7 +15,7 @@ export default async function page() {
       )
     } else {
       return (
-          <StudyClient />
+        <StudyClient />
       )
     }
 }

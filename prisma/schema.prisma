@@ -90,7 +90,7 @@ model StudyGuide {
   StudySet StudySet[]
   private  Boolean    @default(false)
 
-  @@unique([name, userID]) // name_userID
+  @@unique(name: "studyGuideID", [name, userID]) // name_userID
   @@index([completed]) // want to be able to quickly find the completed ones and sort them
 }
 

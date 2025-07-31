@@ -1,16 +1,21 @@
-import NavBar from "@/components/NavBar"
 import StudyGuideClient from "@/components/StudyGuideClient"
-import { SessionProvider } from "next-auth/react"
+import { auth } from "@/auth";
+import Link from "next/link";
 
 export default async function page({ params } : { params : Promise<{ studyGuideID : string }> }) {
-    const { studyGuideID } = await params
+    const session = await auth()
 
-    return (
-        <div className='relative w-full h-auto'>
-            <SessionProvider>
-                <NavBar />
-            </SessionProvider>
-            <StudyGuideClient guideID={studyGuideID} />
+    if (!session?.user) {
+      return (
+        <div>
+          <h1>401 USER NOT AUTHORIZED</h1>
+          <Link href="/">Go Home</Link>
         </div>
-    )
+      )
+    } else {
+        const { studyGuideID } = await params
+        return (
+            <StudyGuideClient guideID={studyGuideID} />
+        )
+    }
 }
