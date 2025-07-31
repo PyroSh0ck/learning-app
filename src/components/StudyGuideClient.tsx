@@ -1,6 +1,6 @@
+'use client'
 "use client";
 
-<<<<<<< Updated upstream
 import { StudyGuide_f } from "@/lib/prismaTypes"
 import StatBox from "./StatBox"
 import { StudySet } from "@prisma/client"
@@ -9,7 +9,6 @@ import { SessionProvider } from "next-auth/react"
 import NavBar from "@/components/NavBar"
 import Link from "next/link"
 import StudyGuideEdit from "./StudyGuideEdit"
-=======
 import { StudyGuide_f } from "@/lib/prismaTypes";
 import StatBox from "./StatBox";
 import { StudySet } from "@prisma/client";
@@ -19,8 +18,22 @@ import CreateStudySetModal from "./CreateStudySetModal";
 import ErrorMessage from "./ErrorMessage";
 import { SessionProvider } from "next-auth/react";
 import NavBar from "./NavBar";
->>>>>>> Stashed changes
 
+function StatsComp({ headerName } : { headerName : string }) {
+    return (
+        <>
+            <h1 className="w-full text-left pl-10 text-2xl font-bold text-purple-600">{headerName}</h1>
+            <hr className='w-45 h-1 bg-purple-600 border-none self-start ml-7 rounded-lg mt-2' />
+            <div className='statsHolder flex flex-row flex-wrap justify-center items-center w-full h-full mt-10 '>
+                <StatBox text={'stat1'} />
+                <StatBox text={'stat2'} />
+                <StatBox text={'stat3'} />
+                <StatBox text={'stat4'} />
+                <StatBox text={'stat5'} />
+                <StatBox text={'stat6'} />
+            </div>
+        </>
+    )
 function StatsComp({ headerName }: { headerName: string }) {
   return (
     <>
@@ -40,6 +53,7 @@ function StatsComp({ headerName }: { headerName: string }) {
   );
 }
 
+export default function StudyGuideClient({ guideID } : { guideID : string }) {
 export default function StudyGuideClient({ guideID }: { guideID: string }) {
   const [guide, setGuide] = useState<StudyGuide_f>();
   const [studySetModalOpen, setStudySetModalOpen] = useState(false);
@@ -47,7 +61,6 @@ export default function StudyGuideClient({ guideID }: { guideID: string }) {
   const [error, setError] = useState<string | null>(null);
   const [canClickOff, setCanClickOff] = useState(true);
 
-<<<<<<< Updated upstream
     const [guide, setGuide] = useState<StudyGuide_f>()
     const [editOpen, setEditOpen] = useState(false)
      const [currentSet, setCurrentSet] = useState<StudySet>()
@@ -59,15 +72,21 @@ export default function StudyGuideClient({ guideID }: { guideID: string }) {
     };
 >>>>>>> Stashed changes
 
+    useEffect(() => {
+        const fetchFunc = async () => {
+            const res = await fetch(`/api/studyguides?id=${guideID}`)
+            setGuide(await res.json())
+        }
     fetchFunc();
   }, [guideID]);
 
+        fetchFunc()
+    }, [guideID])
   useEffect(() => {
     if (!guide) return;
     setStudySet(guide.StudySet);
   }, [guide]);
 
-<<<<<<< Updated upstream
     useEffect(() => {
         console.log(guide)
     }, [guide])
