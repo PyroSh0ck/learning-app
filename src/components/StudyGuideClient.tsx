@@ -3,7 +3,7 @@
 import { StudyGuide_f } from "@/lib/prismaTypes";
 import StatBox from "./StatBox";
 import { StudySet } from "@prisma/client";
-import { use, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import CreateStudySetModal from "./CreateStudySetModal";
 import ErrorMessage from "./ErrorMessage";
@@ -82,12 +82,6 @@ export default function StudyGuideClient({ guideID }: { guideID: string }) {
         />
       <div className="relative h-screen">
         {error && <ErrorMessage message={error} setMessage={setError} />}
-        <button
-          onClick={() => setStudySetModalOpen(!studySetModalOpen)}
-          className="bg-purple-700 p-4 rounded-xl hover:bg-purple-800 text-white transition-colors duration-175 ease-in-out font-black absolute right-0 top-0 m-5 cursor-pointer"
-        >
-          Create +
-        </button>
 
         <div className="root flex flex-col justify-start items-center w-full h-4/5">
           <h1 className="my-20 font-black text-5xl text-center">{guide!.name}</h1>
@@ -99,7 +93,13 @@ export default function StudyGuideClient({ guideID }: { guideID: string }) {
                   Study Sets
                 </h1>
                 <hr className="w-full h-[0.2rem] bg-purple-600 border-none self-start ml-7 mt-2" />
-                <div className="studySetHolder flex flex-col items-center justify-start overflow-y-scroll no-scrollbar min-h-185 border-r-3 border-purple-600 w-full">
+                <div className="studySetHolder flex flex-col items-center justify-start overflow-y-scroll no-scrollbar min-h-185 border-r-3 relative border-purple-600 w-full">
+                  <button
+                    onClick={() => setStudySetModalOpen(!studySetModalOpen)}
+                    className="bg-purple-700 p-4 rounded-xl hover:bg-purple-800 text-white transition-colors duration-175 ease-in-out font-black absolute right-0 top-0 m-5 cursor-pointer"
+                  >
+                    Create +
+                  </button>
                   {studySet.map((studySet) => (
                     <div
                       key={studySet.id}
