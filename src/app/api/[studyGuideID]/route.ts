@@ -6,6 +6,7 @@ import { AuthenticateUser, CheckIfValid, CheckValidStudyGuide } from "@/lib/cust
 
 const PrismaQuerier = async ( method : string, studyGuideID : string, studySetName : string, studySetID : string ) => {
     let data : unknown[] = []
+    const genCheck = CheckIfValid(studyGuideID)
     switch (method) {
         case "GET": 
             data = await prisma.studySet.findMany({
@@ -24,6 +25,9 @@ const PrismaQuerier = async ( method : string, studyGuideID : string, studySetNa
             data.push(createdSet)
             break;
         case "PATCH":
+            if (genCheck !== true) {
+                return genCheck
+            }
             const updatedSet = await prisma.studySet.update({
                 where : {
                     id: studySetID
@@ -35,6 +39,9 @@ const PrismaQuerier = async ( method : string, studyGuideID : string, studySetNa
             data.push(updatedSet)
             break;
         case "DELETE":
+            if (genCheck !== true) {
+                return genCheck
+            }
             await prisma.studySet.delete({
                 where : {
                     id: studySetID
@@ -68,7 +75,7 @@ const NetworkTemplate = async (session : Session | null, req : NextAuthRequest, 
         const { studyGuideID } : { studyGuideID : string } = await params
         const { studySetName, studySetID } : { studySetName : string, studySetID : string } = body
 
-        const genCheck = CheckIfValid(studyGuideID, studySetName, studySetID) 
+        const genCheck = CheckIfValid(studyGuideID, studySetName) 
 
         if (genCheck === true) {
             const userID = valid

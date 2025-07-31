@@ -5,6 +5,7 @@ import Link from "next/link";
 export default async function page({ params } : { params : Promise<{ studyGuideID : string }> }) {
     const session = await auth()
 
+<<<<<<< Updated upstream
     if (!session?.user) {
       return (
         <div>
@@ -18,4 +19,9 @@ export default async function page({ params } : { params : Promise<{ studyGuideI
             <StudyGuideClient guideID={studyGuideID} />
         )
     }
+=======
+    return (
+            <StudyGuideClient guideID={studyGuideID} />
+    )
+>>>>>>> Stashed changes
 }
