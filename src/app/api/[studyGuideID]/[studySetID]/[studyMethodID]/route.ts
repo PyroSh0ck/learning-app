@@ -1,243 +1,808 @@
-import { prisma } from "@/lib/db";
-import { NextResponse } from "next/server";
-import { auth } from "@/auth";
-import { AuthenticateUser, CheckIfValid, CheckValidStudyGuide } from "@/lib/customFuncs";
-import { FlashCard, PracticeQuestion, QuestionType, Video } from "@prisma/client";
-import { NextAuthRequest, Session } from "next-auth";
-import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import { prisma } from '@/lib/db'
+import { FlashCard, QuestionType } from '@prisma/client'
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library'
+import { DateTime } from 'next-auth/providers/kakao'
+import { NextResponse, NextRequest } from 'next/server'
+import { NextAuthRequest } from 'next-auth'
+import { auth } from '@/auth'
+import { stringify } from 'querystring'
 
-const PrismaQuerier = async (
-  method: string,
-  studyMethod: string,
-  studyGuideID: string,
-  studySetID: string,
-  studyMethodID: string,
-  req: NextAuthRequest,
-  query: URLSearchParams
-) => {
-    const body = method === "GET" ? null : await req.json();
-  switch (method) {
-    case "GET": {
-      const limit = Number(query.get("limit"));
-      const iteration = Number(query.get("iteration")) || 0;
 
-      if (isNaN(limit) || limit > 50) {
-        return NextResponse.json({ message: "Limit is invalid or exceeds 50." }, { status: 400 });
-      }
+export const GET = auth(async function GET(req, { params }) {    
+    if (req.auth!) {
+        const { studyGuideID, studySetID, studyMethodID } = await params;
 
-      const skip = iteration * limit;
-      if (studyMethod === "flashcard") {
-        const count = await prisma.flashCard.count({ where: { flashCardSetID: studyMethodID } });
-        if (skip > count) {
-          return NextResponse.json({ message: "Iteration too high." }, { status: 400 });
+        if (studyGuideID === "" || !studyGuideID) {
+            return NextResponse.json(
+                {message: `studyGuideID returned blank, null, or undefined. studyGuideID is ${studyGuideID}`}, 
+                { status: 400 }
+            ) 
+        }
+        if (studySetID === "" || !studySetID) {
+            return NextResponse.json(
+                { message: `studySetID returned blank, null, or undefined. studySetID is ${studySetID}`}, 
+                { status: 400 }
+            )
+        }
+        if (studyMethodID === "" || !studyMethodID) {
+            return NextResponse.json(
+                { message: `studyMethodID returned blank, null, or undefined. studyMethodID is ${studyMethodID}`}, 
+                { status: 400 }
+            )
         }
 
-        const data = await prisma.flashCard.findMany({
-          where: { flashCardSetID: studyMethodID },
-          skip,
-          take: limit
-        });
+        if (!req.auth.user?.id) {
+            return NextResponse.json(
+                {message: `Session is likely invalid, UserID was not found. UserID is ${req.auth.user?.id}`}, 
+                { status: 400 }
+            ) 
+        }
+        const currentUserID = req.auth.user.id;
 
-        return NextResponse.json(data);
-      }
-
-      if (studyMethod === "video") {
-        const count = await prisma.video.count({ where: { playlistID: studyMethodID } });
-        if (skip > count) {
-          return NextResponse.json({ message: "Iteration too high." }, { status: 400 });
+        const studyGuide = await prisma.studyGuide.findUnique({
+            where: {
+                id: studyGuideID
+            }
+        })
+        if (!studyGuide){
+            return NextResponse.json(
+                {message: `StudyGuide could not be found. StudyGuideID is ${studyGuideID}`}, 
+                { status: 500 }
+            ) 
+        }
+        const ownerUserID = studyGuide.userID
+        if ((studyGuide.private) && (currentUserID != ownerUserID)) {
+            return NextResponse.json(
+                {message: `You can not access a private studyguide's contents without being the owner.`}, 
+                { status: 400 }
+            ) 
         }
 
-        const data = await prisma.video.findMany({
-          where: { playlistID: studyMethodID },
-          skip,
-          take: limit
-        });
+        const searchParams = req.nextUrl.searchParams
+        const method = searchParams.get("method")
+        const limit = Number(searchParams.get("limit"))
+        const iteration = Number(searchParams.get("iteration"))
 
-        return NextResponse.json(data);
-      }
+        if (method === "flashcard"){
 
-      if (studyMethod === "practice") {
-        const qType = query.get("type") as QuestionType | null;
-        const count = await prisma.practiceQuestion.count({
-          where: {
-            practiceQuestionSetID: studyMethodID,
-            ...(qType && { type: qType })
-          }
-        });
+            const flashcardSet = await prisma.flashCardSet.findUnique({
+                where: {
+                    id: studyMethodID
+                }
+            })
 
-        if (skip > count) {
-          return NextResponse.json({ message: "Iteration too high." }, { status: 400 });
+            if (!flashcardSet) {
+                return NextResponse.json(
+                    {message: `Could not find flashcard set. Maybe it is a different study method?`}, 
+                    { status: 500 }
+                )
+            }
+            
+            
+            const numCards = await prisma.flashCard.count({
+                where: {
+                    flashCardSetID: studyMethodID
+                }
+            })
+
+            if (numCards === 0) {
+                return NextResponse.json([])
+            }
+
+            if ((limit === null) || (limit > 50)) {
+                return NextResponse.json(
+                {message: `Flashcard(s) unable to be retrieved. The limit search parameter was NaN, or the limit was greater than 50.`}, 
+                { status: 400 }
+                )
+            }
+
+            if ((iteration === null) || (iteration * limit - limit > numCards)) { 
+                return NextResponse.json(
+                {message: `Flashcard(s) unable to be retrieved. The iteration search parameter was NaN, or the iteration was too high.`}, 
+                { status: 400 }
+                )
+            }
+            const flashcardsWithID = await prisma.flashCard.findMany({
+                skip: iteration * limit,
+                take: limit, // won't be an issue if there are less cards than the limit left
+                where: {
+                    flashCardSetID: studyMethodID // not an issue because we checked if it was null already
+                }
+            })
+
+            return NextResponse.json(flashcardsWithID)
+        }
+        if (method === "video") {
+            const playlist = await prisma.playlist.findUnique({
+                where: {
+                    id: studyMethodID
+                }
+            })
+
+            if (!playlist) {
+                return NextResponse.json(
+                    {message: `Could not find flashcard set. Maybe it is a different study method?`}, 
+                    { status: 500 }
+                )
+            }
+
+            const numVideos = await prisma.flashCard.count({
+                where: {
+                    flashCardSetID: studyMethodID
+                }
+            })
+
+            if ((limit === null) || (limit > 50)) {
+                return NextResponse.json(
+                {message: `Videos(s) unable to be retrieved. The limit search parameter was NaN, or the limit was greater than 50.`}, 
+                { status: 400 }
+                )
+            }
+
+            
+            if ((iteration === null) || (iteration * limit - limit > numVideos)) {
+                return NextResponse.json(
+                {message: `Videos(s) unable to be retrieved. The iteration search parameter was NaN, or the iteration was too high.`}, 
+                { status: 400 }
+                )
+            }
+
+            const videosWithID = await prisma.video.findMany({
+                skip: iteration * limit,
+                take: limit, // won't be an issue if there are less cards than the limit left
+                where: {
+                    playlistID: studyMethodID // not an issue because we checked if it was null already
+                }
+            })
+
+            return NextResponse.json(videosWithID)
+        }
+        if (method === "practice"){
+            const qType = searchParams.get("type")
+            const practiceSet = await prisma.practiceQuestionSet.findUnique({
+                where: {
+                    id: studyMethodID
+                }
+            })
+
+            if (!practiceSet) {
+                return NextResponse.json(
+                    {message: `Could not find flashcard set. Maybe it is a different study method?`}, 
+                    { status: 500 }
+                )
+            }
+            
+            
+            const numQuestions = await prisma.practiceQuestion.count({
+                where: {
+                    practiceQuestionSetID: studyMethodID,
+                    ...(qType && { type: qType as QuestionType }) 
+                }
+            })
+
+            if ((limit === null) || (limit > 50)) {
+                return NextResponse.json(
+                {message: `Flashcard(s) unable to be retrieved. The limit search parameter was NaN, or the limit was greater than 50.`}, 
+                { status: 400 }
+                )
+            }
+
+            if ((iteration === null) || (iteration * limit - limit > numQuestions)) {
+                return NextResponse.json(
+                {message: `Flashcard(s) unable to be retrieved. The iteration search parameter was NaN, or the iteration was too high.`}, 
+                { status: 400 }
+                )
+            }
+            const practiceQuestionWithID = await prisma.practiceQuestion.findMany({
+                skip: iteration * limit,
+                take: limit, // won't be an issue if there are less cards than the limit left
+                where: {
+                    practiceQuestionSetID: studyMethodID,
+                    ...(qType && { type: qType as QuestionType }) 
+                }
+            })
+
+            return NextResponse.json(practiceQuestionWithID)
+        }
+    } else return NextResponse.json(
+        { message: `Session is invalid`}, 
+        { status: 400 }
+    ) 
+})
+
+export const POST = auth(async function POST(req, { params }) {    
+    if (req.auth!) {
+        const { studyGuideID, studySetID, studyMethodID } = await params;
+
+        if (studyGuideID === "" || !studyGuideID) {
+            return NextResponse.json(
+                {message: `studyGuideID returned blank, null, or undefined. studyGuideID is ${studyGuideID}`}, 
+                { status: 400 }
+            ) 
+        }
+        if (studySetID === "" || !studySetID) {
+            return NextResponse.json(
+                { message: `studySetID returned blank, null, or undefined. studySetID is ${studySetID}`}, 
+                { status: 400 }
+            )
+        }
+        if (studyMethodID === "" || !studyMethodID) {
+            return NextResponse.json(
+                { message: `studyMethodID returned blank, null, or undefined. studyMethodID is ${studyMethodID}`}, 
+                { status: 400 }
+            )
         }
 
-        const data = await prisma.practiceQuestion.findMany({
-          where: {
-            practiceQuestionSetID: studyMethodID,
-            ...(qType && { type: qType })
-          },
-          skip,
-          take: limit
-        });
+        if (!req.auth.user?.id) {
+            return NextResponse.json(
+                {message: `Session is likely invalid, UserID was not found. UserID is ${req.auth.user?.id}`}, 
+                { status: 400 }
+            ) 
+        }
+        const currentUserID = req.auth.user.id;
 
-        return NextResponse.json(data);
-      }
+        const studyGuide = await prisma.studyGuide.findUnique({
+            where: {
+                id: studyGuideID
+            }
+        })
+        if (!studyGuide){
+            return NextResponse.json(
+                {message: `StudyGuide could not be found. StudyGuideID is ${studyGuideID}`}, 
+                { status: 500 }
+            ) 
+        }
+        const ownerUserID = studyGuide.userID
+        if ((currentUserID != ownerUserID)) {
+            return NextResponse.json(
+                {message: `You can not edit another person's studyguide`}, 
+                { status: 400 }
+            ) 
+        }
 
-      break;
-    }
+        const searchParams = req.nextUrl.searchParams
+        const method = searchParams.get("method")
+        const body = await req.json();
 
-    case "POST": {
-      if (studyMethod === "flashcard") {
-        const parsed = JSON.parse(body);
-        const flashcards = parsed.map((item: FlashCard) => ({
-          frontContent: item.frontContent,
-          backContent: item.backContent,
-          flashCardSetID: studyMethodID
-        }));
+        if (method === "flashcard"){
+            const flashcardSet = await prisma.flashCardSet.findUnique({
+                where: {
+                    id: studyMethodID
+                }
+            })
 
-        const result = await prisma.flashCard.createMany({ data: flashcards });
-        return NextResponse.json(result);
-      }
+            if (!flashcardSet) {
+                return NextResponse.json(
+                    {message: `Could not find flashcard set. Maybe it is a different study method?`}, 
+                    { status: 500 }
+                )
+            }
 
-      if (studyMethod === "video") {
-        const parsed = JSON.parse(body);
-        const videos = parsed.map((item: Video) => ({
-          name: item.name,
-          url: item.url,
-          playlistID: studyMethodID
-        }));
+            const newArr : { frontContent: string, backContent: string, flashCardSetID: string }[] = []
 
-        const result = await prisma.video.createMany({ data: videos });
-        return NextResponse.json(result);
-      }
+            JSON.parse(body).forEach((element : { frontData: string, backData: string }) => {
 
-      if (studyMethod === "practice") {
-        const parsed = JSON.parse(body);
-        const questions = parsed.map((item: PracticeQuestion) => ({
-          question: item.question,
-          answer: item.answer,
-          options: item.options,
-          type: item.type,
-          practiceQuestionSetID: studyMethodID
-        }));
+                const newElement = {
+                    frontContent: element.frontData,
+                    backContent: element.backData,
+                    flashCardSetID: studyMethodID,
+                }
 
-        const result = await prisma.practiceQuestion.createMany({ data: questions });
-        return NextResponse.json(result);
-      }
+                newArr.push(newElement)
 
-      break;
-    }
-
-    case "PATCH": {
-      const updatedItems: any[] = [];
-
-      for (const item of body) {
-        try {
-          if (studyMethod === "flashcard") {
-            const updated = await prisma.flashCard.update({
-              where: { id: item.id },
-              data: item
             });
-            updatedItems.push(updated);
-          } else if (studyMethod === "video") {
-            const updated = await prisma.video.update({
-              where: { id: item.id },
-              data: item
-            });
-            updatedItems.push(updated);
-          } else if (studyMethod === "practice") {
-            const updated = await prisma.practiceQuestion.update({
-              where: { id: item.id },
-              data: item
-            });
-            updatedItems.push(updated);
-          }
-        } catch (err) {
-          if (err instanceof PrismaClientKnownRequestError && err.code === 'P2025') {
-            return NextResponse.json({ message: "Invalid ID. Item not found." }, { status: 400 });
-          }
-          return NextResponse.json({ message: "Update failed." }, { status: 500 });
+
+            if (newArr.length === 0) {
+                return NextResponse.json({
+                    message: "Flashcard(s) were unable to be saved. Appropriate data was not passed in from the client",
+                    status: 400,
+                })
+            }
+
+            // This one will throw an err if the constraint fails
+            // However, P2002 and P2003 (which are the main known errors)
+            // Cannot happen, as there are no @unique or @@unique fields being updated
+            // And we've already coded a check for studySetID
+
+            try {
+                const createdCards = await prisma.flashCard.createMany({
+                    data: newArr,
+                })
+
+                return NextResponse.json(createdCards)  
+            } catch {
+                return NextResponse.json({
+                    message: "Unknown error reached with POST request. The bulk creation of flashcards failed (although it wasn't due to a foreign key constraint or a unique constraint validation",
+                    status: 500,
+                })
+            }
         }
-      }
+        if (method === "video") {
+            const playlist = await prisma.playlist.findUnique({
+                where: {
+                    id: studyMethodID
+                }
+            })
 
-      return NextResponse.json(updatedItems);
-    }
+            if (!playlist) {
+                return NextResponse.json(
+                    {message: `Could not find flashcard set. Maybe it is a different study method?`}, 
+                    { status: 500 }
+                )
+            }
 
-    case "DELETE": {
-      for (const item of body) {
-        try {
-          if (studyMethod === "flashcard") {
-            await prisma.flashCard.delete({ where: { id: item.id } });
-          } else if (studyMethod === "video") {
-            await prisma.video.delete({ where: { id: item.id } });
-          } else if (studyMethod === "practice") {
-            await prisma.practiceQuestion.delete({ where: { id: item.id } });
-          }
-        } catch (err) {
-          return NextResponse.json({ message: `Delete failed. ${err}` }, { status: 500 });
+            const newArr : {name : string, url : string, playlistID : string}[] = []
+
+            JSON.parse(body).forEach((element : { name: string, url: string }) => {
+
+                const newElement = {
+                    name: element.name,
+                    url: element.url,
+                    playlistID: studyMethodID,
+                }
+
+                newArr.push(newElement)
+
+            });
+
+            if (newArr.length === 0) {
+                return NextResponse.json({
+                    message: "Flashcard(s) were unable to be saved. Appropriate data was not passed in from the client",
+                    status: 400,
+                })
+            }
+
+            // This one will throw an err if the constraint fails
+            // However, P2002 and P2003 (which are the main known errors)
+            // Cannot happen, as there are no @unique or @@unique fields being updated
+            // And we've already coded a check for studySetID
+
+            try {
+                const videos = await prisma.video.createMany({
+                    data: newArr,
+                })
+
+                return NextResponse.json(videos)  
+            } catch {
+                return NextResponse.json(
+                    {message: "Unknown error reached with POST request. The bulk creation of videos failed (although it wasn't due to a foreign key constraint or a unique constraint validation"},
+                    {status: 500},
+                )
+            }
+            
         }
-      }
+        if (method === "practice"){
+            const practiceSet = await prisma.practiceQuestionSet.findUnique({
+                where: { id: studyMethodID }
+            });
 
-      return NextResponse.json({ message: "Items deleted." });
-    }
-  }
-};
+            if (!practiceSet) {
+                return NextResponse.json(
+                    { message: `Could not find practice question set. Maybe it is a different study method?` },
+                    { status: 500 }
+                );
+            }
 
-const NetworkTemplate = async (
-  session: Session,
-  req: NextAuthRequest,
-  { params }: { params: Promise<{ studyGuideID: string; studySetID: string; studyMethodID: string }> },
-  method: string
-) => {
-  const userID = AuthenticateUser(session);
-  if (typeof userID !== "string") return userID;
+            const newArr: {
+                question: string;
+                answer: string[];
+                options: string[];
+                type: QuestionType;
+                practiceQuestionSetID: string;
+            }[] = [];
 
-  const { studyGuideID, studySetID, studyMethodID } = await params;
-  const methodType = req.nextUrl.searchParams.get("method");
+            JSON.parse(body).forEach((element: {
+                question: string;
+                answer: string[];
+                options: string[];
+                type: QuestionType;
+            }) => {
+                newArr.push({
+                    question: element.question,
+                    answer: element.answer,
+                    options: element.options,
+                    type: element.type,
+                    practiceQuestionSetID: studyMethodID
+                });
+            });
 
-  const valid = CheckIfValid(studyGuideID, studySetID, studyMethodID, methodType);
-  if (valid !== true) return valid;
+            if (newArr.length === 0) {
+                return NextResponse.json({
+                    message: "Practice question(s) were unable to be saved. Appropriate data was not passed in from the client.",
+                    status: 400
+                });
+            }
 
-  const studyGuide = await prisma.studyGuide.findUnique({ where: { id: studyGuideID } });
-  const canAccess = CheckValidStudyGuide(studyGuide, userID);
-  if (canAccess !== true) return canAccess;
+            try {
+                const createdQuestions = await prisma.practiceQuestion.createMany({
+                    data: newArr
+                });
 
-  return PrismaQuerier(method, methodType!, studyGuideID, studySetID, studyMethodID, req, req.nextUrl.searchParams);
-};
-export const GET = auth(async function GET(req : NextAuthRequest, { params } : { params : Promise<{ studyGuideID : string, studySetID: string, studyMethodID: string } > }) {
-    const session = req.auth;
+            return NextResponse.json(createdQuestions);
+                } catch {
+                    return NextResponse.json({
+                        message: "Unknown error reached with POST request. The bulk creation of practice questions failed.",
+                    status: 500
+                });
+            }
+        }
+    } else return NextResponse.json(
+        { message: `Session is invalid`}, 
+        { status: 400 }
+    ) 
+})
 
-    if (!session) {
-        return NextResponse.json({ message: "Unauthorized: No session found." }, { status: 401 });
-    }
+export const PATCH = auth(async function PATCH(req, { params }) {    
+    if (req.auth!) {
+        const { studyGuideID, studySetID, studyMethodID } = await params;
 
-    return NetworkTemplate(session, req, {params}, 'GET');
-});
+        if (studyGuideID === "" || !studyGuideID) {
+            return NextResponse.json(
+                {message: `studyGuideID returned blank, null, or undefined. studyGuideID is ${studyGuideID}`}, 
+                { status: 400 }
+            ) 
+        }
+        if (studySetID === "" || !studySetID) {
+            return NextResponse.json(
+                { message: `studySetID returned blank, null, or undefined. studySetID is ${studySetID}`}, 
+                { status: 400 }
+            )
+        }
+        if (studyMethodID === "" || !studyMethodID) {
+            return NextResponse.json(
+                { message: `studyMethodID returned blank, null, or undefined. studyMethodID is ${studyMethodID}`}, 
+                { status: 400 }
+            )
+        }
 
-export const POST = auth(async function POST(req : NextAuthRequest, { params } : { params : Promise<{ studyGuideID : string, studySetID: string, studyMethodID: string } > }) {
-    const session = req.auth;
+        if (!req.auth.user?.id) {
+            return NextResponse.json(
+                {message: `Session is likely invalid, UserID was not found. UserID is ${req.auth.user?.id}`}, 
+                { status: 400 }
+            ) 
+        }
+        const currentUserID = req.auth.user.id;
 
-    if (!session) {
-        return NextResponse.json({ message: "Unauthorized: No session found." }, { status: 401 });
-    }
+        const studyGuide = await prisma.studyGuide.findUnique({
+            where: {
+                id: studyGuideID
+            }
+        })
+        if (!studyGuide){
+            return NextResponse.json(
+                {message: `StudyGuide could not be found. StudyGuideID is ${studyGuideID}`}, 
+                { status: 500 }
+            ) 
+        }
+        const ownerUserID = studyGuide.userID
+        if ((currentUserID != ownerUserID)) {
+            return NextResponse.json(
+                {message: `You can not edit another person's studyguide`}, 
+                { status: 400 }
+            ) 
+        }
 
-    return NetworkTemplate(session, req, {params}, 'POST');
-});
+        const searchParams = req.nextUrl.searchParams
+        const method = searchParams.get("method")
+        const body = await req.json();
 
-export const PATCH = auth(async function PATCH(req : NextAuthRequest, { params } : { params : Promise<{ studyGuideID : string, studySetID: string, studyMethodID: string } > }) {
-    const session = req.auth;
+        if (method === "flashcard"){
+            const flashcardSet = await prisma.flashCardSet.findUnique({
+                where: {
+                    id: studyMethodID
+                }
+            })
 
-    if (!session) {
-        return NextResponse.json({ message: "Unauthorized: No session found." }, { status: 401 });
-    }
+            if (!flashcardSet) {
+                return NextResponse.json(
+                    {message: `Could not find flashcard set. Maybe it is a different study method?`}, 
+                    { status: 500 }
+                )
+            }
 
-    return NetworkTemplate(session, req, {params}, 'PATCH');
-});
+            const updatedCards : FlashCard[] = []
 
-export const DELETE = auth(async function DELETE(req : NextAuthRequest, { params } : { params : Promise<{ studyGuideID : string, studySetID: string, studyMethodID: string } > }) {
-    const session = req.auth;
+            for (const element of body) {
+                try {
+                    const updatedCard = await prisma.flashCard.update({
+                        where: {
+                            id: element.id,
+                        },
+                        data: {
+                            frontContent: element.frontContent,
+                            backContent: element.backContent,
+                            learnedCount: element.learnedCount,
+                            lastLearned: element.lastLearned,
+                        }
+                    });
+                    updatedCards.push(updatedCard);
+                } catch (err) {
+                    if (err instanceof PrismaClientKnownRequestError && err.code === 'P2025') {
+                        return NextResponse.json({
+                            message: "Unable to update flashcard(s). The flashcard doesn't exist, which means that the id must have been invalid.",
+                            status: 400,
+                        });
+                    } else {
+                        return NextResponse.json({
+                            message: "Unexpected error? Unknown issue with updating cards",
+                            status: 500,
+                        });
+                    }
+                }
+            }
 
-    if (!session) {
-        return NextResponse.json({ message: "Unauthorized: No session found." }, { status: 401 });
-    }
+            return NextResponse.json(updatedCards)
+        }
+        if (method === "video") {
+            const playlist = await prisma.playlist.findUnique({
+                where: { id: studyMethodID }
+            });
 
-    return NetworkTemplate(session, req, {params}, 'DELETE');
-});
+            if (!playlist) {
+                return NextResponse.json(
+                    { message: `Could not find playlist. Maybe it is a different study method?` },
+                    { status: 500 }
+                );
+            }
+
+            const updatedVideos = [];
+
+            for (const element of body) {
+                try {
+                    const updatedVideo = await prisma.video.update({
+                        where: { id: element.id },
+                        data: {
+                            name: element.name,
+                            url: element.url,
+                            watched: element.watched
+                        }
+                    });
+                    updatedVideos.push(updatedVideo);
+                } catch (err) {
+                    if (err instanceof PrismaClientKnownRequestError && err.code === 'P2025') {
+                        return NextResponse.json({
+                            message: "Unable to update video(s). Invalid id.",
+                            status: 400
+                        });
+                    } else {
+                        return NextResponse.json({
+                            message: "Unexpected error while updating video(s).",
+                            status: 500
+                        });
+                    }
+                }
+            }
+
+            return NextResponse.json(updatedVideos);
+        }
+        if (method === "practice"){
+            const practiceSet = await prisma.practiceQuestionSet.findUnique({
+                where: { id: studyMethodID }
+            });
+
+            if (!practiceSet) {
+                return NextResponse.json(
+                    { message: `Could not find practice question set. Maybe it is a different study method?` },
+                    { status: 500 }
+                );
+            }
+
+            const updatedQuestions = [];
+
+            for (const element of body) {
+                try {
+                    const updated = await prisma.practiceQuestion.update({
+                        where: { id: element.id },
+                        data: {
+                            question: element.question,
+                            answer: element.answer,
+                            options: element.options,
+                            type: element.type,
+                            timesAnsweredRight: element.timesAnsweredRight ?? 0,
+                            timesAnsweredWrong: element.timesAnsweredWrong ?? 0,
+                            image: element.image ?? undefined
+                        }
+                    });
+                    updatedQuestions.push(updated);
+                } catch (err) {
+                    if (err instanceof PrismaClientKnownRequestError && err.code === 'P2025') {
+                        return NextResponse.json({
+                            message: "Unable to update practice question(s). Invalid id.",
+                            status: 400
+                        });
+                    } else {
+                        return NextResponse.json({
+                            message: "Unexpected error while updating practice question(s).",
+                            status: 500
+                        });
+                    }
+                }
+            }
+
+            return NextResponse.json(updatedQuestions);
+        }
+    } else return NextResponse.json(
+         {message: `Session is invalid`}, 
+        { status: 400 }
+    ) 
+})
+
+export const DELETE = auth(async function DELETE(req, { params }) {    
+    if (req.auth!) {
+        const { studyGuideID, studySetID, studyMethodID } = await params;
+
+        if (studyGuideID === "" || !studyGuideID) {
+            return NextResponse.json(
+                {message: `studyGuideID returned blank, null, or undefined. studyGuideID is ${studyGuideID}`}, 
+                { status: 400 }
+            ) 
+        }
+        if (studySetID === "" || !studySetID) {
+            return NextResponse.json(
+                { message: `studySetID returned blank, null, or undefined. studySetID is ${studySetID}`}, 
+                { status: 400 }
+            )
+        }
+        if (studyMethodID === "" || !studyMethodID) {
+            return NextResponse.json(
+                { message: `studyMethodID returned blank, null, or undefined. studyMethodID is ${studyMethodID}`}, 
+                { status: 400 }
+            )
+        }
+
+        if (!req.auth.user?.id) {
+            return NextResponse.json(
+                {message: `Session is likely invalid, UserID was not found. UserID is ${req.auth.user?.id}`}, 
+                { status: 400 }
+            ) 
+        }
+        const currentUserID = req.auth.user.id;
+
+        const studyGuide = await prisma.studyGuide.findUnique({
+            where: {
+                id: studyGuideID
+            }
+        })
+        if (!studyGuide){
+            return NextResponse.json(
+                {message: `StudyGuide could not be found. StudyGuideID is ${studyGuideID}`}, 
+                { status: 500 }
+            ) 
+        }
+        const ownerUserID = studyGuide.userID
+        if ((currentUserID != ownerUserID)) {
+            return NextResponse.json(
+                {message: `You can not edit another person's studyguide`}, 
+                { status: 400 }
+            ) 
+        }
+
+        const searchParams = req.nextUrl.searchParams
+        const method = searchParams.get("method")
+        const body = await req.json();
+
+        if (method === "flashcard"){
+            const flashcardSet = await prisma.flashCardSet.findUnique({
+                where: {
+                    id: studyMethodID
+                }
+            })
+
+            if (!flashcardSet) {
+                return NextResponse.json(
+                    {message: `Could not find flashcard set. Maybe it is a different study method?`}, 
+                    { status: 500 }
+                )
+            }
+
+            // Format:
+            // [{id: ajfoiwefj}, {id: iowaepjf}, ...]
+
+            for (const element of body) {
+                try {
+                    await prisma.flashCard.delete({
+                        where: {
+                            id: element.id
+                        }
+                    });
+                } catch (err) {
+                    if (err instanceof PrismaClientKnownRequestError && err.code === 'P2025') {
+                        return NextResponse.json({
+                            message: "Unable to delete flashcard(s). Invalid id.",
+                            status: 400,
+                        });
+                    } else {
+                        return NextResponse.json({
+                            message: "Unable to delete flashcard(s). Unknown error.",
+                            status: 400,
+                        });
+                    }
+                }
+            }
+
+
+            return NextResponse.json({
+                message: "Deleted flashcard(s) successfully.",
+                status: 500,
+            })
+        }
+        if (method === "video") {
+            const playlist = await prisma.playlist.findUnique({
+                    where: { id: studyMethodID }
+                });
+
+                if (!playlist) {
+                    return NextResponse.json(
+                        { message: `Could not find playlist. Maybe it is a different study method?` },
+                        { status: 500 }
+                    );
+                }
+
+                for (const element of body) {
+                    try {
+                        await prisma.video.delete({
+                            where: { id: element.id }
+                        });
+                    } catch (err) {
+                        if (err instanceof PrismaClientKnownRequestError && err.code === 'P2025') {
+                            return NextResponse.json({
+                                message: "Unable to delete video(s). Invalid id.",
+                                status: 400
+                            });
+                        } else {
+                            return NextResponse.json({
+                                message: "Unable to delete video(s). Unknown error.",
+                                status: 500
+                            });
+                        }
+                    }
+                }
+
+                return NextResponse.json({
+                    message: "Deleted video(s) successfully.",
+                    status: 200
+                });
+        }
+        if (method === "practice"){
+            const practiceSet = await prisma.practiceQuestionSet.findUnique({
+                where: { id: studyMethodID }
+            });
+
+            if (!practiceSet) {
+                return NextResponse.json(
+                    { message: `Could not find practice question set. Maybe it is a different study method?` },
+                    { status: 500 }
+                );
+            }
+
+            for (const element of body) {
+                try {
+                    await prisma.practiceQuestion.delete({
+                        where: { id: element.id }
+                    });
+                } catch (err) {
+                    if (err instanceof PrismaClientKnownRequestError && err.code === 'P2025') {
+                        return NextResponse.json({
+                            message: "Unable to delete practice question(s). Invalid id.",
+                            status: 400
+                        });
+                    } else {
+                        return NextResponse.json({
+                            message: "Unable to delete practice question(s). Unknown error.",
+                            status: 500
+                        });
+                    }
+                }
+            }
+
+            return NextResponse.json({
+                message: "Deleted practice question(s) successfully.",
+                status: 200
+            });
+        }
+    } else return NextResponse.json(
+        { message: `Session is invalid`}, 
+        { status: 400 }
+    ) 
+})

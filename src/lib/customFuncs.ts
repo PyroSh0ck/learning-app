@@ -31,35 +31,20 @@ export const CheckIfValid = (...vars : unknown[]) => {
     for (const element of vars) {
         if (element === null) {
             return NextResponse.json(
-<<<<<<< Updated upstream
                 { message: `Unexpected error. Element at index ${vars.indexOf(element)} of params returned null`},
-=======
-                { message: `Unexpected error. ${element?.toString()} returned null  ${vars.indexOf(element)} `},
->>>>>>> Stashed changes
                 { status: 400 }
             )
         }
 
         if (element === undefined) {
             return NextResponse.json(
-<<<<<<< Updated upstream
                 { message: `Unexpected error. Element at index ${vars.indexOf(element)} of params is undefined. Is this intentional? `},
-=======
-                { message: `Unexpected error. An elementis undefined. Is this intentional? `},
->>>>>>> Stashed changes
                 { status: 400 }
             )
         }
 
         if (typeof element === 'string' && element.trim() === '') {
-<<<<<<< Updated upstream
             console.log(`Element at index ${vars.indexOf(element)} of params is an empty string. Was this intentional?`)
-=======
-            return NextResponse.json(
-                { message: `Unexpected error. ${element?.toString()} is an empty string. Is this intentional? `},
-                { status: 400 }
-            )
->>>>>>> Stashed changes
         }
 
         if (Array.isArray(element) && element.length === 0) {
@@ -87,16 +72,4 @@ export const CheckValidStudyGuide = ( studyGuide : StudyGuide | null, userID : s
     }
 
     return true
-}
-
-
-export const GetValidatedMethod = (searchParams: URLSearchParams) => {
-    const method = searchParams.get("method")
-    if (!method || !["flashcard", "video", "practice"].includes(method)) {
-        return NextResponse.json(
-            { message: "Invalid or missing 'method' query parameter." },
-            { status: 400 }
-        )
-    }
-    return method
 }
