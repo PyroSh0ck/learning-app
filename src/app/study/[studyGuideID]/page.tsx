@@ -18,7 +18,4 @@ export default async function page({ params } : { params : Promise<{ studyGuideI
             <StudyGuideClient guideID={studyGuideID} />
         )
     }
-    return (
-            <StudyGuideClient guideID={studyGuideID} />
-    )
 }

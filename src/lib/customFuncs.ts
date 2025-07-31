@@ -31,8 +31,7 @@ export const CheckIfValid = (...vars : unknown[]) => {
     for (const element of vars) {
         if (element === null) {
             return NextResponse.json(
-                { message: `Unexpected error. Element at index ${vars.indexOf(element)} of params returned null`},
-                { message: `Unexpected error. ${element?.toString()} returned null  ${vars.indexOf(element)} `},
+                { message: `Unexpected error. Element at index ${vars.indexOf(element)} of params returned null  `},
                 { status: 400 }
             )
         }
@@ -40,7 +39,6 @@ export const CheckIfValid = (...vars : unknown[]) => {
         if (element === undefined) {
             return NextResponse.json(
                 { message: `Unexpected error. Element at index ${vars.indexOf(element)} of params is undefined. Is this intentional? `},
-                { message: `Unexpected error. An elementis undefined. Is this intentional? `},
                 { status: 400 }
             )
         }
