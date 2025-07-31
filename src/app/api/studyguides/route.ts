@@ -23,6 +23,18 @@ export const POST = auth(async function POST(req: NextAuthRequest) {
     const check = CheckIfValid(studyGuideName, tagIDsGiven)
 
     if (check === true) {
+      const data = await prisma.studyGuide.findFirst({
+        where: {
+          name: studyGuideName,
+          userID: userID
+        }
+      })
+      if (data) {
+        return NextResponse.json(
+          { message: "A study guide with this name already exists." },
+          { status: 400 }
+        )
+      }
       try {
         const createdGuide_t = await prisma.studyGuide.create({
           data: {

@@ -7,13 +7,15 @@ import { useEffect, useState } from 'react'
 import { StudyGuide_t } from "@/lib/prismaTypes" // custom prisma types :D
 import NavBar from "./NavBar"
 import { SessionProvider } from "next-auth/react"
+import ErrorMessage from "./ErrorMessage"
 
 export default function StudyClient() {
     const [query, setQuery] = useState("")
     const [filter, setFilter] = useState("")
     const [guides_t, setGuides_t] = useState<StudyGuide_t[]>([])
     const [active, setActive] = useState(false)
-
+    const [error, setError] = useState<string | null>(null)
+    const [canClickOff, setCanClickOff] = useState(true)
     const options = [
         { label: "Date Created ↓", value: "dateCreatedDesc" },
         { label: "Date Created ↑", value: "dateCreatedAsc" },
@@ -43,8 +45,13 @@ export default function StudyClient() {
         fetchGuides();
     }, [query, filter])
 
+    useEffect(() => {
+        setCanClickOff(true);
+    }, [active]);
+
     return (
         <div className='relative h-screen'>
+            {active && <div className="fixed h-screen w-full z-10 inset-0 bg-black opacity-50" onClick={() => canClickOff && setActive(false)} />}
             <SessionProvider>
                 <NavBar />
             </SessionProvider>
@@ -55,7 +62,8 @@ export default function StudyClient() {
                 <SearchBar setQuery={setQuery} setFilter={setFilter} options={options} />
                 <FilteredGuides guides={guides_t} />  
             </div>
-            <Root modalOpen={active} setModalOpen={setActive} setGuides_t={setGuides_t} />
+            <Root modalOpen={active} setModalOpen={setActive} setGuides_t={setGuides_t} setError={setError} setCanClickOff={setCanClickOff} />
+            {error && <ErrorMessage message={error} setMessage={setError} />}
         </div>
   )
 }
